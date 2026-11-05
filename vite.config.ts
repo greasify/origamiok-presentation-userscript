@@ -12,14 +12,22 @@ export default defineConfig((config) => {
     plugins: [
       userscript({
         entry: 'src/index.ts',
+        fileName: 'origamiok-presentation',
         autoMetaUrls: true,
         header: {
-          name: pkg.name,
-          version: pkg.version,
-          description: pkg.description,
-          icon: 'greasify.svg',
-          homepage: 'https://greasify.github.io/vite-userscript-template/',
-          match: 'https://example.com/',
+          'name': 'OrigamiOK Presentation',
+          'version': pkg.version,
+          'description': pkg.description,
+          'icon': 'greasify.svg',
+          'homepage': 'https://greasify.github.io/userscript-origamiok-presentation/',
+          'match': [
+            'https://origamiok.com/*',
+            'https://www.origamiok.com/*',
+          ],
+          'grant': 'none',
+          'run-at': 'document-idle',
+          'inject-into': 'page',
+          'noframes': true,
         },
         server: {
           file: true,

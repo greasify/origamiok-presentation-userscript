@@ -1,16 +1,19 @@
 {
-  "name": "vite-userscript-template",
+  "name": "origamiok-presentation",
   "type": "module",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
   "packageManager": "pnpm@11.25.0",
-  "description": "Ship a userscript like a Vite app — local HMR and a single .user.js for Tampermonkey, Greasemonkey and Violentmonkey.",
+  "description": "Слайды по шагам прямо на странице OrigamiOK, с переводом в браузере.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "type-check": "tsc --noEmit -p tsconfig.json",
     "lint": "eslint . --cache",
     "lint:fix": "eslint . --fix --cache"
+  },
+  "dependencies": {
+    "@zero-dependency/dom": "1.8.5"
   },
   "devDependencies": {
     "@antfu/eslint-config": "10.0.0",
@@ -20,6 +23,6 @@
     "sass-embedded": "1.107.1",
     "typescript": "6.0.3",
     "vite": "8.3.6",
-    "vite-userscript-plugin": "2.5.5"
+    "vite-userscript-plugin": "2.5.6"
   }
 }
