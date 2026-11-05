@@ -1,18 +1,21 @@
-import type { PageModel, Photo, SectionBlock } from '../parse-page'
+import type { PageModel, Photo, RelatedCard, SectionBlock } from '../parse-page'
+import type { CoverFact } from '../parse/cover'
 import { el } from '@zero-dependency/dom'
-import { factLines } from '../parse-page'
+import { renderSVG } from 'uqr'
+import { factLines, toolLines } from '../parse-page'
+import { capitalLead } from '../parse/title'
 import { cachedTranslation } from '../translate'
-import { photoFrame } from './dom'
+import { FACT_ICONS, photoFrame } from './dom'
 
 interface SlideModel {
-  kind: 'cover' | 'step' | 'section' | 'end'
+  kind: 'cover' | 'step' | 'section' | 'end' | 'related'
   title: string
   body: string[]
   images: Photo[]
-  facts: string[]
+  facts: CoverFact[]
+  cards: RelatedCard[]
   n: number
   href: string
-  author: string
   youtubeId: string | null
 }
 
@@ -48,10 +51,10 @@ function slidesOf(page: PageModel): SlideModel[] {
     title: page.modelName,
     body: [],
     images: page.hero ? [page.hero] : [],
-    facts: factLines(page.facts, page.steps.length),
+    facts: [...factLines(page.facts, page.steps.length), ...toolLines(page.steps)],
+    cards: [],
     n: 0,
     href: '',
-    author: '',
     youtubeId: null,
   }]
 
@@ -64,9 +67,9 @@ function slidesOf(page: PageModel): SlideModel[] {
         body: copy.body,
         images: step.images,
         facts: [],
+        cards: [],
         n: step.n,
         href: '',
-        author: '',
         youtubeId: null,
       })
     }
@@ -86,9 +89,9 @@ function slidesOf(page: PageModel): SlideModel[] {
         body: copy.body,
         images,
         facts: [],
+        cards: [],
         n: 0,
         href: '',
-        author: '',
         youtubeId: null,
       })
     }
@@ -100,11 +103,25 @@ function slidesOf(page: PageModel): SlideModel[] {
     body: [],
     images: [],
     facts: [],
+    cards: [],
     n: 0,
     href: page.sourceUrl,
-    author: page.authors.join(', ') || 'OrigamiOK',
     youtubeId: page.youtubeId,
   })
+
+  if (page.related) {
+    slides.push({
+      kind: 'related',
+      title: page.related.heading,
+      body: [],
+      images: [],
+      facts: [],
+      cards: page.related.items,
+      n: 0,
+      href: '',
+      youtubeId: null,
+    })
+  }
 
   return slides
 }
@@ -120,10 +137,14 @@ function renderPhotos(images: Photo[], label: string) {
   return row
 }
 
+function paint(node: HTMLElement, text: string) {
+  node.textContent = node.matches('h1, strong') ? capitalLead(text) : text
+}
+
 function bind(node: HTMLElement, source: string, sink: CopySink) {
   const text = source.trim()
   if (!text) return
-  node.textContent = cachedTranslation(text) ?? text
+  paint(node, cachedTranslation(text) ?? text)
   const bucket = sink.bindings.get(text) ?? new Set<HTMLElement>()
   bucket.add(node)
   sink.bindings.set(text, bucket)
@@ -140,7 +161,13 @@ function renderCover(slide: SlideModel, sink: CopySink) {
   copy.append(title)
   if (slide.facts.length) {
     const list = el('ul', { className: 'cover-facts' })
-    for (const fact of slide.facts) list.append(el('li', fact))
+    for (const fact of slide.facts) {
+      const icon = el('span', { className: 'fact-icon' })
+      icon.innerHTML = FACT_ICONS[fact.kind]
+      const item = el('li')
+      item.append(icon, fact.text)
+      list.append(item)
+    }
     copy.append(list)
   }
   stack.append(copy)
@@ -185,35 +212,72 @@ function renderSection(slide: SlideModel, sink: CopySink) {
   return root
 }
 
-function renderEnd(slide: SlideModel, sink: CopySink) {
-  const root = el('article', { className: 'slide paper-end' })
-  root.append(el('h1', 'Откуда схема'))
-  const note = el('p', { className: 'lede' }, 'Фотографии и исходный текст — OrigamiOK.')
-  root.append(note)
-  const credit = el('p', { className: 'source-credit' })
-  const link = el('a')
-  link.href = slide.href || '#'
+function qrLink(href: string, label: string, sink: CopySink) {
+  const link = el('a', { className: 'qr-link' })
+  link.href = href
   link.target = '_blank'
   link.rel = 'noreferrer'
-  bind(link, slide.title, sink)
-  credit.append(link, el('span', slide.author))
-  root.append(credit)
-  if (slide.youtubeId) {
-    const video = el('p', { className: 'source-credit' })
-    const watch = el('a', 'Ролик на YouTube')
-    watch.href = `https://www.youtube.com/watch?v=${slide.youtubeId}`
-    watch.target = '_blank'
-    watch.rel = 'noreferrer'
-    video.append(watch)
-    root.append(video)
+  const mark = el('span', { className: 'qr-mark' })
+  mark.innerHTML = renderSVG(href, {
+    ecc: 'M',
+    border: 2,
+    blackColor: 'currentColor',
+    whiteColor: '#f3ecdf',
+  })
+  const caption = el('span')
+  bind(caption, label, sink)
+  link.append(mark, caption)
+  return link
+}
+
+function renderEnd(slide: SlideModel, sink: CopySink) {
+  const root = el('article', { className: 'slide paper-end' })
+  const title = el('h1')
+  bind(title, slide.title, sink)
+  root.append(title)
+  const row = el('div', { className: 'qr-row' })
+  if (slide.href) row.append(qrLink(slide.href, 'С картинками', sink))
+  if (slide.youtubeId) row.append(qrLink(`https://www.youtube.com/watch?v=${slide.youtubeId}`, 'Видео', sink))
+  if (row.childElementCount) root.append(row)
+  return root
+}
+
+function renderRelated(slide: SlideModel, sink: CopySink) {
+  const root = el('article', { className: slide.cards.length > 4 ? 'slide paper-related is-dense' : 'slide paper-related' })
+  const title = el('h1')
+  bind(title, slide.title, sink)
+  const grid = el('div', { className: 'related-grid' })
+  grid.style.setProperty('--cards', String(Math.min(slide.cards.length, 4)))
+  for (const card of slide.cards) {
+    const link = el('a', { className: 'related-card' })
+    link.href = card.href
+    if (card.image) {
+      const photo = el('img')
+      photo.src = card.image.url
+      photo.alt = card.image.alt || card.title
+      link.append(photo)
+    }
+    const name = el('strong')
+    bind(name, card.title, sink)
+    link.append(name)
+    if (card.meta.length) {
+      const meta = el('span', { className: 'related-meta' })
+      for (const line of card.meta) {
+        const bit = el('span')
+        bind(bit, line, sink)
+        meta.append(bit)
+      }
+      link.append(meta)
+    }
+    grid.append(link)
   }
-  return { root, note }
+  root.append(title, grid)
+  return root
 }
 
 export function renderSlides(page: PageModel) {
   const bindings = new Map<string, Set<HTMLElement>>()
   const rendered: RenderedSlide[] = []
-  let note: HTMLElement | null = null
 
   for (const slide of slidesOf(page)) {
     const sink: CopySink = { texts: [], bindings }
@@ -221,9 +285,9 @@ export function renderSlides(page: PageModel) {
     if (slide.kind === 'cover') {
       root = renderCover(slide, sink)
     } else if (slide.kind === 'end') {
-      const end = renderEnd(slide, sink)
-      root = end.root
-      note = end.note
+      root = renderEnd(slide, sink)
+    } else if (slide.kind === 'related') {
+      root = renderRelated(slide, sink)
     } else if (slide.kind === 'section' && !slide.images.length) {
       root = renderSection(slide, sink)
     } else {
@@ -233,11 +297,9 @@ export function renderSlides(page: PageModel) {
     rendered.push({ root, texts: sink.texts })
   }
 
-  return { rendered, bindings, note }
+  return { rendered, bindings }
 }
 
 export function applyText(bindings: Map<string, Set<HTMLElement>>, source: string, translated: string) {
-  bindings.get(source)?.forEach((node) => {
-    node.textContent = translated
-  })
+  bindings.get(source)?.forEach(node => paint(node, translated))
 }

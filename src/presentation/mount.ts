@@ -57,7 +57,7 @@ export function mountPresentation(page: PageModel) {
   const viewport = el('div', { className: 'viewport' })
   const slot = el('div', { className: 'stage-slot' })
   const stage = el('div', { className: 'stage' })
-  const { rendered, bindings, note } = renderSlides(page)
+  const { rendered, bindings } = renderSlides(page)
   for (const slide of rendered) stage.append(slide.root)
   slot.append(stage)
   viewport.append(slot)
@@ -238,7 +238,6 @@ export function mountPresentation(page: PageModel) {
 
   const enqueue = (translator: NonNullable<Awaited<ReturnType<typeof beginTranslation>>>) => {
     session = translator
-    if (note) note.textContent = 'Фотографии и исходный текст — OrigamiOK. Русский текст переведён в браузере.'
     let left = todo.length
     if (!left) {
       status.textContent = ''
@@ -270,7 +269,6 @@ export function mountPresentation(page: PageModel) {
       if (wired) return
       launch.textContent = LAUNCH_LABEL
       status.textContent = 'Переводчик Chrome не отвечает, текст на языке страницы'
-      if (note) note.textContent = 'Фотографии и исходный текст — OrigamiOK. Текст показан на языке страницы.'
     }, 15_000)
   }
   launch.addEventListener('click', () => {
@@ -293,7 +291,6 @@ export function mountPresentation(page: PageModel) {
       launch.textContent = LAUNCH_LABEL
       if (!translator) {
         if (todo.length) status.textContent = 'Переводчик Chrome недоступен, текст на языке страницы'
-        if (note) note.textContent = 'Фотографии и исходный текст — OrigamiOK. Текст показан на языке страницы.'
         return
       }
       if (wired) return
