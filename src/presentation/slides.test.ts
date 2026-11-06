@@ -42,7 +42,7 @@ describe('headings', () => {
 
     const related = rendered.at(-1)?.root
     const cardTitle = related?.querySelector('strong')
-    const cardMeta = related?.querySelector('.related-meta span')
+    const cardMeta = related?.querySelector<HTMLSpanElement>('.related-meta span')
     expect(cardTitle?.classList.contains('is-copy')).toBe(true)
     expect(cardTitle?.dataset.source).toBe('frog face')
     expect(cardMeta?.textContent).toBe('10 Minutes')
