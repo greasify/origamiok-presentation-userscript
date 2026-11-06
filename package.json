@@ -6,7 +6,7 @@
   "packageManager": "pnpm@11.25.0",
   "description": "Слайды по шагам прямо на странице OrigamiOK, с переводом в браузере.",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --host",
     "build": "vite build",
     "type-check": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run",
@@ -19,11 +19,13 @@
   },
   "devDependencies": {
     "@antfu/eslint-config": "10.0.0",
+    "@types/node": "22.20.5",
     "eslint": "9.39.5",
     "eslint-plugin-format": "2.0.1",
     "happy-dom": "21.0.4",
     "prettier-plugin-css-order": "2.2.0",
-    "sass-embedded": "1.107.1",
+    "sass-embedded": "1.108.0",
+    "selfsigned": "5.5.0",
     "typescript": "6.0.3",
     "vite": "8.3.6",
     "vite-userscript-plugin": "2.5.6",

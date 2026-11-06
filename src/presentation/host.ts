@@ -3,6 +3,12 @@ const HOST_ID = 'origami-presentation-host'
 let boundKey: ((event: KeyboardEvent) => void) | null = null
 let boundFullscreen: (() => void) | null = null
 let heldOverflow: string | null = null
+let releaseSync: (() => void) | null = null
+
+export function bindRelease(release: () => void) {
+  releaseSync?.()
+  releaseSync = release
+}
 
 function pageKeyboard() {
   return (navigator as Navigator & {
@@ -38,7 +44,7 @@ export function holdOverflow() {
 export function lockEscape() {
   const keyboard = pageKeyboard()
   if (!keyboard?.lock) return
-  void keyboard.lock(['Escape']).catch(() => {})
+  keyboard.lock(['Escape']).catch(() => {})
 }
 
 export function unlockEscape() {
@@ -61,11 +67,13 @@ export function bindFullscreen(handler: () => void) {
 }
 
 export function unmountPresentation() {
+  releaseSync?.()
+  releaseSync = null
   releaseOverflow()
   dropBoundListeners()
   unlockEscape()
   const host = document.getElementById(HOST_ID)
-  if (host && document.fullscreenElement === host) void document.exitFullscreen()
+  if (host && document.fullscreenElement === host) document.exitFullscreen()
   host?.remove()
 }
 

@@ -1,4 +1,11 @@
+import type { RemoteView } from '../presenter/protocol'
 import { el } from '@zero-dependency/dom'
+import {
+  pixelsFromView,
+  viewFromPixels,
+  ZOOM_MAX,
+  ZOOM_MIN,
+} from '../presenter/protocol'
 import {
   CLOSE_ICON,
   MAGNIFY_ICON,
@@ -12,8 +19,6 @@ export interface LightboxPhoto {
   alt: string
 }
 
-const ZOOM_MIN = 1
-const ZOOM_MAX = 5
 const ZOOM_STEP = 1.1
 const ZOOM_JUMP = 1.5
 const WHEEL_ZOOM = 1.05
@@ -24,6 +29,11 @@ export interface LightboxController {
   open: (photos: readonly LightboxPhoto[], index: number, onIndex?: (index: number) => void) => void
   close: () => void
   isOpen: () => boolean
+  index: () => number
+  select: (index: number) => void
+  getView: () => RemoteView
+  setView: (view: RemoteView) => void
+  watch: (listener: () => void) => void
   onKey: (event: KeyboardEvent) => boolean
 }
 
@@ -54,6 +64,9 @@ export function createLightbox(overlay: HTMLElement, onClose: () => void): Light
   let photos: readonly LightboxPhoto[] = []
   let index = 0
   let onIndex: ((index: number) => void) | null = null
+  let viewListener: (() => void) | null = null
+
+  const notify = () => viewListener?.()
 
   const paintMagnification = () => {
     photo.style.transform = `translate(${panX}px, ${panY}px) scale(${magnification})`
@@ -82,11 +95,29 @@ export function createLightbox(overlay: HTMLElement, onClose: () => void): Light
     return { scale: nextScale, x: nextX, y: nextY }
   }
 
+  const roomOf = (scale: number) => ({
+    x: Math.max(0, (photo.offsetWidth * scale - stage.clientWidth) / 2),
+    y: Math.max(0, (photo.offsetHeight * scale - stage.clientHeight) / 2),
+  })
+
   const applyPlace = (placed: { scale: number, x: number, y: number }) => {
     magnification = placed.scale
     panX = placed.x
     panY = placed.y
     paintMagnification()
+    notify()
+  }
+
+  const getView = () => {
+    const room = roomOf(magnification)
+    return viewFromPixels({ scale: magnification, panX, panY, roomX: room.x, roomY: room.y })
+  }
+
+  const setView = (view: RemoteView) => {
+    const scale = view.scale
+    const room = roomOf(scale)
+    const pixels = pixelsFromView(view, room.x, room.y)
+    applyPlace(placePhoto(scale, { x: pixels.x, y: pixels.y }, true))
   }
 
   const setMagnification = (next: number) => {
@@ -154,6 +185,7 @@ export function createLightbox(overlay: HTMLElement, onClose: () => void): Light
     showPhoto(start, false)
     overlay.classList.add('is-zoomed')
     root.hidden = false
+    notify()
   }
 
   const onKey = (event: KeyboardEvent) => {
@@ -223,16 +255,58 @@ export function createLightbox(overlay: HTMLElement, onClose: () => void): Light
     armSettle()
   }, { passive: false })
   let drag: { x: number, y: number, panX: number, panY: number } | null = null
+  const points = new Map<number, { x: number, y: number }>()
+  let fingers: { distance: number, scale: number, x: number, y: number, panX: number, panY: number } | null = null
+
+  const pair = () => {
+    const all = [...points.values()]
+    const a = all[0]
+    const b = all[1]
+    if (!a || !b) return null
+    return {
+      distance: Math.max(1, Math.hypot(a.x - b.x, a.y - b.y)),
+      x: (a.x + b.x) / 2,
+      y: (a.y + b.y) / 2,
+    }
+  }
+
   stage.addEventListener('pointerdown', (event) => {
     if (event.button !== 0) return
-    if (!(event.target instanceof Element) || !event.target.closest('.lightbox-photo')) return
+    const onPhoto = event.target instanceof Element && Boolean(event.target.closest('.lightbox-photo'))
+    if (!onPhoto && points.size === 0) return
+    points.set(event.pointerId, { x: event.clientX, y: event.clientY })
+    stage.setPointerCapture(event.pointerId)
+    const now = pair()
+    if (now) {
+      drag = null
+      fingers = { distance: now.distance, scale: magnification, x: now.x, y: now.y, panX, panY }
+      event.preventDefault()
+      return
+    }
+    if (!onPhoto) return
     event.preventDefault()
     if (magnification <= ZOOM_MIN) return
     drag = { x: event.clientX, y: event.clientY, panX, panY }
     dragged = false
-    stage.setPointerCapture(event.pointerId)
+    stage.classList.add('is-dragging')
   })
   stage.addEventListener('pointermove', (event) => {
+    const point = points.get(event.pointerId)
+    if (point) {
+      point.x = event.clientX
+      point.y = event.clientY
+    }
+    if (fingers) {
+      const now = pair()
+      if (!now) return
+      event.preventDefault()
+      dragged = true
+      applyPlace(placePhoto(fingers.scale * (now.distance / fingers.distance), {
+        x: fingers.panX + now.x - fingers.x,
+        y: fingers.panY + now.y - fingers.y,
+      }, true))
+      return
+    }
     if (!drag) return
     event.preventDefault()
     const nextX = drag.panX + event.clientX - drag.x
@@ -240,11 +314,16 @@ export function createLightbox(overlay: HTMLElement, onClose: () => void): Light
     if (Math.hypot(nextX - drag.panX, nextY - drag.panY) > 3) dragged = true
     applyPlace(placePhoto(magnification, { x: nextX, y: nextY }, true))
   })
-  const endDrag = () => {
-    drag = null
+  const endPointer = (event: PointerEvent) => {
+    points.delete(event.pointerId)
+    if (points.size < 2) fingers = null
+    if (points.size === 0) {
+      drag = null
+      stage.classList.remove('is-dragging')
+    }
   }
-  stage.addEventListener('pointerup', endDrag)
-  stage.addEventListener('pointercancel', endDrag)
+  stage.addEventListener('pointerup', endPointer)
+  stage.addEventListener('pointercancel', endPointer)
   setMagnification(ZOOM_MIN)
 
   return {
@@ -252,6 +331,13 @@ export function createLightbox(overlay: HTMLElement, onClose: () => void): Light
     open,
     close,
     isOpen: () => !root.hidden,
+    index: () => index,
+    select: (next: number) => showPhoto(next),
+    getView,
+    setView,
+    watch: (listener: () => void) => {
+      viewListener = listener
+    },
     onKey,
   }
 }

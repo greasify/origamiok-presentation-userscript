@@ -52,4 +52,16 @@ describe('lightbox photos', () => {
     lightbox.onKey(new KeyboardEvent('keydown', { key: 'ArrowRight' }))
     expect(photo(lightbox)?.getAttribute('src')).toBe('https://origamiok.com/only.webp')
   })
+
+  it('applies a normalized zoom from the presenter', () => {
+    const lightbox = mount()
+    lightbox.open([{ src: 'https://origamiok.com/only.webp', alt: 'Only' }], 0)
+    lightbox.setView({ scale: 2, nx: 0, ny: 0 })
+    expect(photo(lightbox)?.style.transform).toBe('translate(0px, 0px) scale(2)')
+    expect(lightbox.root.querySelector('.lightbox-stage')?.classList.contains('is-dragging')).toBe(false)
+    expect(lightbox.getView()).toEqual({ scale: 2, nx: 0, ny: 0 })
+    lightbox.setView({ scale: 9, nx: 4, ny: -4 })
+    expect(photo(lightbox)?.style.transform).toBe('translate(0px, 0px) scale(5)')
+    expect(lightbox.getView().scale).toBe(5)
+  })
 })

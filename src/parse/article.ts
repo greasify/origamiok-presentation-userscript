@@ -1,4 +1,12 @@
-import type { Facts, Photo, RelatedBlock, RelatedCard, SectionBlock, StepBlock } from './types'
+import type {
+  Facts,
+  Photo,
+  RelatedBlock,
+  RelatedCard,
+  SectionBlock,
+  StepBlock,
+} from './types'
+import { capturePaper } from './cover'
 import { cleanModelTitle } from './title'
 
 interface DraftImage extends Photo {
@@ -214,13 +222,11 @@ function relatedFrom(content: Element, base: string): RelatedBlock | null {
 
 function extractFacts(text: string): Facts {
   const minutes = text.match(/folding time:\s*(\d+)\s*minutes?/i) || text.match(/(\d+)\s*minutes?/i)
-  const paper = text.match(/paper:\s*(\d+(?:[.,]\d+)?\s*[×x]\s*\d+(?:[.,]\d+)?\s*cm)/i)
-    || text.match(/(\d+(?:[.,]\d+)?\s*[×x]\s*\d+(?:[.,]\d+)?\s*cm)/i)
   const steps = text.match(/total\s+steps:\s*(\d+)/i)
   const difficulty = text.match(/difficulty:\s*(easy|intermediate|advanced|beginner(?: friendly)?)/i)
   return {
     minutes: minutes ? Number(minutes[1]) : null,
-    paper: paper ? (paper[1] ?? '').replace(/x/gi, '×').replace(/\s+/g, ' ') : null,
+    paper: capturePaper(text),
     steps: steps ? Number(steps[1]) : null,
     difficulty: difficulty ? cleanText(difficulty[1] ?? '').replace(/[.,]$/, '') : null,
   }

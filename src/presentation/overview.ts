@@ -27,6 +27,15 @@ function freezeShow(copy: HTMLElement) {
   if (bar instanceof HTMLElement) bar.style.transform = 'scaleX(0)'
 }
 
+export function slideMarkup(root: HTMLElement) {
+  const copy = root.cloneNode(true)
+  if (!(copy instanceof HTMLElement)) return ''
+  freezeShow(copy)
+  copy.classList.remove('is-active')
+  copy.setAttribute('aria-hidden', 'true')
+  return copy.outerHTML
+}
+
 export function createOverview(
   slides: readonly HTMLElement[],
   onPick: (index: number) => void,

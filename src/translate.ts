@@ -153,7 +153,7 @@ function pump() {
   pending.delete(job.text)
   active = 1
   const stamp = rev(job.text)
-  void engine.translate(job.text).then((out) => {
+  engine.translate(job.text).then((out) => {
     const clean = typeof out === 'string' && out.trim() ? out.trim() : job.text
     if (rev(job.text) !== stamp) {
       settle(job, cachedTranslation(job.text) ?? clean)

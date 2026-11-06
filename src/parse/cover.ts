@@ -27,6 +27,32 @@ function difficultyLabel(value: string | null) {
   return labels[value?.trim().toLowerCase() ?? ''] ?? ''
 }
 
+const SHEET = String.raw`\d+(?:[.,]\d+)?\s*(?:cm\s*)?[×x]\s*\d+(?:[.,]\d+)?\s*cm(?:\s*/\s*\d+)?`
+const SHEET_PARTS = /(\d+(?:[.,]\d+)?)\s*(?:cm\s*)?[×x]\s*(\d+(?:[.,]\d+)?)\s*cm(?:\s*\/\s*(\d+))?/gi
+
+function measure(raw: string) {
+  const value = Number(raw.replace(',', '.'))
+  return Number.isFinite(value) ? String(value) : raw
+}
+
+export function capturePaper(text: string) {
+  const labeled = text.match(new RegExp(String.raw`paper:\s*((?:${SHEET}\s*)+)`, 'i'))
+  if (labeled?.[1]) return labeled[1].trim()
+  return text.match(new RegExp(SHEET, 'i'))?.[0]?.trim() ?? null
+}
+
+export function paperLine(raw: string) {
+  const sheets = [...raw.matchAll(SHEET_PARTS)]
+  if (!sheets.length) return null
+  return sheets.map((sheet) => {
+    const width = measure(sheet[1] ?? '')
+    const height = measure(sheet[2] ?? '')
+    const count = sheet[3] ? Number(sheet[3]) : 1
+    const size = width === height ? `${width} см` : `${width}×${height} см`
+    return `${count} ${plural(count, ['лист', 'листа', 'листов'])} по ${size}`
+  }).join(' и ')
+}
+
 export function factLines(facts: Facts, stepCount: number) {
   const items: CoverFact[] = []
   const minutes = facts.minutes
@@ -34,9 +60,13 @@ export function factLines(facts: Facts, stepCount: number) {
     items.push({ kind: 'time', text: `${minutes} ${plural(minutes, ['минута', 'минуты', 'минут'])}` })
   }
 
-  const paper = (facts.paper ?? '').replace(/\s+/g, ' ').replace(/\bcm\b/gi, 'см').trim()
-  if (paper) items.push({ kind: 'paper', text: `1 лист, ${paper}` })
-  else if (stepCount > 0) items.push({ kind: 'paper', text: '1 лист' })
+  const paper = (facts.paper ?? '').trim()
+  if (paper) {
+    const plain = paper.replace(/\s+/g, ' ').replace(/\bx\b/gi, '×').replace(/\bcm\b/gi, 'см')
+    items.push({ kind: 'paper', text: paperLine(paper) ?? `1 лист, ${plain}` })
+  } else if (stepCount > 0) {
+    items.push({ kind: 'paper', text: '1 лист' })
+  }
 
   if (stepCount > 0) items.push({ kind: 'steps', text: `${stepCount} ${plural(stepCount, ['шаг', 'шага', 'шагов'])}` })
 

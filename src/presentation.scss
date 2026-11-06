@@ -4,6 +4,8 @@
   --seal: #c23b22;
   --mountain: #243e6a;
   --muted: #5c5146;
+  --sans: Onest, 'Avenir Next', 'Segoe UI', sans-serif;
+  --display: Unbounded, 'Avenir Next', sans-serif;
 
   display: block;
   position: fixed;
@@ -17,7 +19,7 @@
 
   font-size: 16px;
   line-height: 1.35;
-  font-family: Onest, 'Avenir Next', 'Segoe UI', sans-serif;
+  font-family: var(--sans);
   letter-spacing: normal;
   text-align: start;
 }
@@ -87,7 +89,7 @@ a {
   color: #fffaf3;
   font-weight: 600;
   font-size: 15px;
-  font-family: Unbounded, 'Avenir Next', sans-serif;
+  font-family: var(--display);
   letter-spacing: -0.03em;
 
   &[hidden] {
@@ -202,7 +204,7 @@ a {
   .qr-link span,
   .related-card strong {
     font-weight: 600;
-    font-family: Unbounded, 'Avenir Next', sans-serif;
+    font-family: var(--display);
     letter-spacing: -0.03em;
   }
 
@@ -441,7 +443,7 @@ a {
   font-weight: 600;
   font-size: 32px;
   line-height: 1;
-  font-family: Unbounded, 'Avenir Next', sans-serif;
+  font-family: var(--display);
   letter-spacing: -0.03em;
 }
 
@@ -660,6 +662,11 @@ a {
   }
 }
 
+.overlay.is-fullscreen.is-idle,
+.overlay.is-fullscreen.is-idle * {
+  cursor: none;
+}
+
 .overlay.is-fullscreen .bar:hover,
 .overlay.is-fullscreen .bar:focus-within,
 .overlay.is-fullscreen:has(.overview:not([hidden])) .bar,
@@ -794,8 +801,8 @@ a {
   overflow: hidden;
   touch-action: none;
 
-  &.is-magnified .lightbox-photo {
-    cursor: grab;
+  &.is-dragging .lightbox-photo {
+    cursor: grabbing;
   }
 }
 
@@ -1014,16 +1021,72 @@ a {
   padding: 10px;
 }
 
+.presenter-slot {
+  position: relative;
+}
+
+.presenter-qr {
+  display: flex;
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 8px);
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  z-index: 2;
+  box-shadow: var(--stamp);
+  background: var(--paper);
+  padding: 16px;
+  width: 212px;
+
+  &[hidden] {
+    display: none;
+  }
+
+  h2 {
+    margin: 0;
+    color: var(--ink);
+    font-weight: 600;
+    font-size: 16px;
+    font-family: var(--display);
+    letter-spacing: -0.03em;
+    text-align: center;
+  }
+
+  .qr-mark {
+    width: 180px;
+    height: 180px;
+  }
+}
+
+.presenter-open {
+  cursor: pointer;
+  box-shadow: var(--stamp);
+  border: 0;
+  background: var(--seal);
+  padding: 0 14px;
+  width: 100%;
+  height: var(--control);
+  color: #fffaf3;
+  font-weight: 600;
+  font-size: 15px;
+  font-family: var(--display);
+  letter-spacing: -0.03em;
+
+  &:hover {
+    background: color-mix(in srgb, var(--seal) 82%, black);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--ink);
+    outline-offset: 3px;
+  }
+}
+
 .pager {
   display: flex;
   align-items: center;
-  box-shadow: var(--stamp);
-  background: var(--seal);
   height: var(--control);
-
-  .seal-button {
-    box-shadow: none;
-  }
 }
 
 .counter {
@@ -1034,16 +1097,16 @@ a {
   padding: 0;
   min-width: 4.75em;
   height: var(--control);
-  color: #fffaf3;
+  color: var(--ink);
   font-weight: 600;
   font-size: 15px;
-  font-family: Unbounded, 'Avenir Next', sans-serif;
+  font-family: var(--display);
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.03em;
 
   &:focus-visible {
-    outline: 2px solid #fffaf3;
-    outline-offset: -4px;
+    outline: 2px solid var(--ink);
+    outline-offset: 3px;
   }
 }
 
@@ -1071,7 +1134,7 @@ a {
 
 .overview-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
 }
 
@@ -1119,15 +1182,16 @@ a {
 
 .overview-index {
   position: absolute;
-  right: 8px;
-  bottom: 8px;
+  right: 0;
+  bottom: 0;
   z-index: 1;
   background: var(--seal);
-  padding: 2px 7px;
+  padding: 4px 6px;
   color: #fffaf3;
   font-weight: 600;
-  font-size: 13px;
-  font-family: Unbounded, 'Avenir Next', sans-serif;
+  font-size: 14px;
+  line-height: 14px;
+  font-family: var(--display);
   font-variant-numeric: tabular-nums;
 }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createOverview } from './overview'
+import { createOverview, slideMarkup } from './overview'
 
 function slide(text: string, active = false) {
   const node = document.createElement('article')
@@ -47,5 +47,19 @@ describe('slide overview', () => {
     expect(overview.onKey(new KeyboardEvent('keydown', { key: 'ArrowRight' }))).toBe(true)
     expect(overview.onKey(new KeyboardEvent('keydown', { key: 'Enter' }))).toBe(true)
     expect(picked).toBe(1)
+  })
+
+  it('copies a slide without the active class and keeps the first photo', () => {
+    const root = slide('Step', true)
+    const show = document.createElement('div')
+    show.className = 'photo-show'
+    show.innerHTML = '<div class="photo-slot is-shown"></div><div class="photo-slot"></div>'
+    root.append(show)
+    const holder = document.createElement('div')
+    holder.innerHTML = slideMarkup(root)
+    const slots = holder.querySelectorAll('.photo-slot')
+    expect(holder.querySelector('.is-active')).toBeNull()
+    expect(slots[0]?.classList.contains('is-shown')).toBe(true)
+    expect(slots[1]?.classList.contains('is-shown')).toBe(false)
   })
 })

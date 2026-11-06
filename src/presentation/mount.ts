@@ -1,9 +1,18 @@
 import type { PageModel } from '../parse-page'
+import type { RemoteCommand, RemoteState } from '../presenter/protocol'
 import type { TranslationSession } from '../translate'
 import type { EditorController } from './editor'
 import { el } from '@zero-dependency/dom'
+import { renderSVG } from 'uqr'
 import presentationCss from '../presentation.scss?inline'
-import { beginTranslation, cachedTranslation, invalidateTranslation, saveTranslation, translatorAvailability } from '../translate'
+import { canonicalPath, deckKey } from '../presenter/protocol'
+import {
+  beginTranslation,
+  cachedTranslation,
+  invalidateTranslation,
+  saveTranslation,
+  translatorAvailability,
+} from '../translate'
 import {
   CREASE,
   EDIT_ICON,
@@ -12,6 +21,7 @@ import {
   LAUNCH_LABEL,
   NEXT_ICON,
   OVERVIEW_ICON,
+  PRESENTER_ICON,
   PREV_ICON,
   sealButton,
   STAGE_HEIGHT,
@@ -30,8 +40,9 @@ import {
   unmountPresentation,
 } from './host'
 import { createLightbox } from './lightbox'
-import { createOverview } from './overview'
+import { createOverview, slideMarkup } from './overview'
 import { applyText, renderSlides } from './slides'
+import { attachStage, presenterHref } from './sync'
 
 export function mountPresentation(page: PageModel) {
   unmountPresentation()
@@ -91,6 +102,30 @@ export function mountPresentation(page: PageModel) {
   bar.append(pager, overviewButton, editButton, closeButton, status)
 
   const photo = createLightbox(overlay, unlockEscape)
+  let publish = () => {}
+  let markupCache: string[] | null = null
+  const markupOf = (slideIndex: number) => {
+    if (!markupCache) markupCache = rendered.map(slide => slideMarkup(slide.root))
+    return markupCache[slideIndex] ?? ''
+  }
+  const schedule = () => publish()
+  let cursorTimer = 0
+  let cursorX = Number.NaN
+  let cursorY = Number.NaN
+  const revealCursor = () => {
+    window.clearTimeout(cursorTimer)
+    cursorTimer = 0
+    overlay.classList.remove('is-idle')
+  }
+  let settleCursor = (_reveal = false) => {}
+  const rememberText = (source: string, value: string) => {
+    markupCache = null
+    applyText(bindings, source, value)
+  }
+  photo.watch(() => {
+    schedule()
+    settleCursor()
+  })
   const heldTranslation = new Map<string, string>()
   const savedNow = new Set<string>()
   let translatorPromise: Promise<TranslationSession | null> | null = null
@@ -102,27 +137,29 @@ export function mountPresentation(page: PageModel) {
       heldTranslation.set(source, translated)
       return
     }
-    applyText(bindings, source, translated)
+    rememberText(source, translated)
+    schedule()
   }
 
   const paintSaved = (source: string, value: string) => {
     const trimmed = value.trim()
     if (!trimmed) {
-      applyText(bindings, source, cachedTranslation(source) ?? source)
+      rememberText(source, cachedTranslation(source) ?? source)
       return
     }
     saveTranslation(source, trimmed)
     savedNow.add(source)
-    applyText(bindings, source, trimmed)
+    rememberText(source, trimmed)
+    schedule()
   }
 
   const resetTranslation = (source: string) => {
     savedNow.delete(source)
     heldTranslation.delete(source)
     invalidateTranslation(source)
-    applyText(bindings, source, source)
+    rememberText(source, source)
     if (!translatorPromise) return
-    void translatorPromise.then((translator) => {
+    translatorPromise.then((translator) => {
       if (!translator) return
       return translator.translate(source, 20_000).then((translated) => {
         applyArrived(source, translated)
@@ -137,7 +174,7 @@ export function mountPresentation(page: PageModel) {
       const translated = heldTranslation.get(source)
       heldTranslation.delete(source)
       if (savedNow.has(source) || !translated) return
-      applyText(bindings, source, translated)
+      rememberText(source, translated)
     },
   })
 
@@ -146,6 +183,8 @@ export function mountPresentation(page: PageModel) {
   document.documentElement.append(host)
 
   let index = 0
+  const canonical = document.querySelector<HTMLLinkElement>('link[rel="canonical"]')?.href ?? ''
+  const key = deckKey(location.pathname, canonicalPath(canonical))
   let session: TranslationSession | null = null
   let wired = false
   let listening = false
@@ -178,6 +217,7 @@ export function mountPresentation(page: PageModel) {
     next.disabled = index === total - 1
     stage.setAttribute('aria-label', `Слайд ${index + 1} из ${total}`)
     session?.prioritize(rendered.slice(index, index + 4).flatMap(slide => slide.texts))
+    schedule()
   }
 
   const go = (delta: number) => show(index + delta)
@@ -187,6 +227,7 @@ export function mountPresentation(page: PageModel) {
   }, () => {
     overviewButton.setAttribute('aria-expanded', 'false')
     overviewButton.setAttribute('aria-pressed', 'false')
+    settleCursor()
   })
   overlay.insertBefore(overview.root, photo.root)
 
@@ -200,24 +241,49 @@ export function mountPresentation(page: PageModel) {
     lockEscape()
   }
 
+  const editing = () => overlay.classList.contains('is-editing')
+
+  const cursorBusy = () => overview.isOpen() || editing() || photo.isOpen()
+
+  settleCursor = (reveal = false) => {
+    window.clearTimeout(cursorTimer)
+    cursorTimer = 0
+    if (reveal) overlay.classList.remove('is-idle')
+    if (!presentationIsFullscreen() || cursorBusy() || overlay.classList.contains('is-idle')) return
+    cursorTimer = window.setTimeout(() => {
+      cursorTimer = 0
+      if (!presentationIsFullscreen() || cursorBusy()) return
+      overlay.classList.add('is-idle')
+    }, 2000)
+  }
+
+  overlay.addEventListener('pointermove', (event) => {
+    if (event.movementX === 0 && event.movementY === 0) return
+    if (event.clientX === cursorX && event.clientY === cursorY) return
+    cursorX = event.clientX
+    cursorY = event.clientY
+    if (presentationIsFullscreen()) settleCursor(true)
+  })
+
   const onFullscreenChange = () => {
     const fullscreen = presentationIsFullscreen()
     overlay.classList.toggle('is-fullscreen', fullscreen)
     if (fullscreen) {
+      settleCursor(true)
       if (photo.isOpen()) holdEscape()
       return
     }
+    revealCursor()
     if (!suppressFullscreenExit) return
     suppressFullscreenExit = false
-    void host.requestFullscreen().catch(() => {})
+    host.requestFullscreen().catch(() => {})
   }
-
-  const editing = () => overlay.classList.contains('is-editing')
 
   const leaveEditing = () => {
     editor.close()
     overlay.classList.remove('is-editing')
     editButton.setAttribute('aria-pressed', 'false')
+    settleCursor()
   }
 
   const enterEditing = () => {
@@ -225,9 +291,11 @@ export function mountPresentation(page: PageModel) {
     overview.close()
     overlay.classList.add('is-editing')
     editButton.setAttribute('aria-pressed', 'true')
+    settleCursor()
   }
 
   const close = () => {
+    revealCursor()
     photo.close()
     overview.close()
     leaveEditing()
@@ -235,20 +303,21 @@ export function mountPresentation(page: PageModel) {
     overlay.hidden = true
     launch.hidden = false
     releaseOverflow()
-    if (document.fullscreenElement === host) void document.exitFullscreen()
+    if (document.fullscreenElement === host) document.exitFullscreen()
     if (listening) {
       unbindKey(onKey)
       listening = false
     }
+    schedule()
     launch.focus()
   }
 
   const toggleFullscreen = () => {
     if (document.fullscreenElement) {
-      void document.exitFullscreen()
+      document.exitFullscreen()
       return
     }
-    void host.requestFullscreen().then(() => {
+    host.requestFullscreen().then(() => {
       if (photo.isOpen()) holdEscape()
     }).catch(() => {})
   }
@@ -262,6 +331,7 @@ export function mountPresentation(page: PageModel) {
     overviewButton.setAttribute('aria-expanded', 'true')
     overviewButton.setAttribute('aria-pressed', 'true')
     overview.open(index)
+    settleCursor()
   }
 
   onKey = (event: KeyboardEvent) => {
@@ -334,6 +404,7 @@ export function mountPresentation(page: PageModel) {
     }
     overlay.focus()
     requestAnimationFrame(updateFit)
+    schedule()
   }
 
   bindFullscreen(onFullscreenChange)
@@ -341,6 +412,88 @@ export function mountPresentation(page: PageModel) {
   const watch = new ResizeObserver(() => updateFit())
   watch.observe(viewport)
   show(0)
+
+  const photosIn = (root: ParentNode) => {
+    return [...root.querySelectorAll<HTMLImageElement>('.sheet-photo')]
+  }
+
+  const openPhotos = (images: HTMLImageElement[], start: number, scope: ParentNode) => {
+    const frames = scope instanceof Element && scope.classList.contains('photo-show')
+      ? scope
+      : scope.querySelector('.photo-show')
+    photo.open(
+      images.map(image => ({ src: image.currentSrc || image.src, alt: image.alt })),
+      start,
+      frames
+        ? next => frames.querySelectorAll<HTMLButtonElement>('.photo-dot')[next]?.click()
+        : undefined,
+    )
+    holdEscape()
+  }
+
+  const readState = (): RemoteState => ({
+    key,
+    open: !overlay.hidden,
+    index,
+    slides: rendered.map((slide, slideIndex) => ({
+      title: slide.root.querySelector('h1')?.textContent?.trim() ?? '',
+      step: slide.root.querySelector('.step-seal')?.textContent?.trim() ?? '',
+      images: photosIn(slide.root).map(image => ({
+        src: image.currentSrc || image.src,
+        alt: image.alt,
+      })),
+      markup: markupOf(slideIndex),
+    })),
+    lightbox: photo.isOpen()
+      ? { index: photo.index(), view: photo.getView() }
+      : null,
+  })
+
+  const applyCommand = (command: RemoteCommand) => {
+    if (overlay.hidden) return
+    if (command.type === 'show') {
+      leaveEditing()
+      overview.close()
+      photo.close()
+      show(command.index)
+      return
+    }
+    if (command.type === 'lightbox-close') {
+      photo.close()
+      return
+    }
+    if (command.type === 'lightbox-view') {
+      if (photo.isOpen()) photo.setView(command.view)
+      return
+    }
+    if (command.type === 'lightbox-photo') {
+      if (photo.isOpen()) photo.select(command.index)
+      return
+    }
+    if (command.type === 'copy-scroll') {
+      if (command.index !== index) return
+      const body = rendered[index]?.root.querySelector('.copy-body')
+      if (!(body instanceof HTMLElement)) return
+      const room = body.scrollHeight - body.clientHeight
+      body.scrollTop = command.top * Math.max(0, room)
+      return
+    }
+    if (command.type === 'text-save') {
+      paintSaved(command.source, command.value)
+      return
+    }
+    if (command.type === 'text-reset') {
+      resetTranslation(command.source)
+      return
+    }
+    const root = rendered[index]?.root
+    if (!root) return
+    const images = photosIn(root)
+    if (!images.length) return
+    leaveEditing()
+    overview.close()
+    openPhotos(images, command.index, root)
+  }
 
   stage.addEventListener('click', (event) => {
     if (!(event.target instanceof Element)) return
@@ -358,20 +511,10 @@ export function mountPresentation(page: PageModel) {
     if (editor.isOpen()) return
     const frame = event.target.closest('.photo-frame')
     const img = frame?.querySelector('img')
-    if (!frame || !img?.src) return
-    const show = frame.closest('.photo-show')
-    const images = show
-      ? [...show.querySelectorAll<HTMLImageElement>('.sheet-photo')]
-      : [img]
-    const index = Math.max(0, images.indexOf(img))
-    photo.open(
-      images.map(image => ({ src: image.currentSrc || image.src, alt: image.alt })),
-      index,
-      show
-        ? next => show.querySelectorAll<HTMLButtonElement>('.photo-dot')[next]?.click()
-        : undefined,
-    )
-    holdEscape()
+    if (!frame || !(img instanceof HTMLImageElement) || !img.src) return
+    const scope = frame.closest('.photo-show') ?? frame
+    const images = photosIn(scope)
+    openPhotos(images, Math.max(0, images.indexOf(img)), scope)
   })
   prev.addEventListener('click', () => go(-1))
   next.addEventListener('click', () => go(1))
@@ -397,7 +540,7 @@ export function mountPresentation(page: PageModel) {
     for (const text of todo) {
       const found = windowTexts.indexOf(text)
       const priority = found === -1 ? 0 : 1000 - found
-      void translator.translate(text, priority).then((translated) => {
+      translator.translate(text, priority).then((translated) => {
         left -= 1
         if (left <= 0) status.textContent = ''
         applyArrived(text, translated)
@@ -435,7 +578,7 @@ export function mountPresentation(page: PageModel) {
       status.textContent = label
     })
     translatorPromise = pending
-    void pending.then((translator) => {
+    pending.then((translator) => {
       stopStall()
       awaitingTranslator = false
       launch.textContent = LAUNCH_LABEL
@@ -449,7 +592,48 @@ export function mountPresentation(page: PageModel) {
     })
   })
 
-  void translatorAvailability().then((state) => {
+  if (import.meta.env.DEV) {
+    const link = presenterHref()
+    const presenterButton = sealButton('', 'Режим ведущего', PRESENTER_ICON)
+    presenterButton.setAttribute('aria-pressed', 'false')
+    presenterButton.setAttribute('aria-expanded', 'false')
+    const qrCard = el('div', { className: 'presenter-qr' })
+    qrCard.hidden = true
+    const mark = el('span', { className: 'qr-mark' })
+    mark.innerHTML = renderSVG(link, {
+      ecc: 'M',
+      border: 2,
+      blackColor: 'currentColor',
+      whiteColor: '#f3ecdf',
+    })
+    const title = el('h2')
+    title.textContent = 'Режим ведущего'
+    const setCard = (open: boolean) => {
+      qrCard.hidden = !open
+      const pressed = open ? 'true' : 'false'
+      presenterButton.setAttribute('aria-pressed', pressed)
+      presenterButton.setAttribute('aria-expanded', pressed)
+    }
+    const openButton = el('button', { className: 'presenter-open' }, 'Открыть')
+    openButton.type = 'button'
+    openButton.addEventListener('click', () => {
+      setCard(false)
+      const opened = window.open(link, 'origami-presenter')
+      opened?.focus()
+    })
+    qrCard.append(mark, title, openButton)
+    presenterButton.addEventListener('click', () => {
+      setCard(Boolean(qrCard.hidden))
+    })
+    const slot = el('div', { className: 'presenter-slot' })
+    slot.append(presenterButton, qrCard)
+    bar.insertBefore(slot, editButton)
+    const sync = attachStage({ key, read: readState, apply: applyCommand })
+    publish = sync.publish
+    sync.publish()
+  }
+
+  translatorAvailability().then((state) => {
     if (state === 'download') launch.title = 'При первом запуске Chrome скачает языковую модель'
     if (state === 'missing') launch.title = 'Переводчик Chrome недоступен, слайды откроются на языке страницы'
   })

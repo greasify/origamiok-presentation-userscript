@@ -1,6 +1,6 @@
 import type { Facts, StepBlock } from './types'
 import { describe, expect, it } from 'vitest'
-import { factLines, toolLines } from './cover'
+import { capturePaper, factLines, paperLine, toolLines } from './cover'
 
 function facts(patch: Partial<Facts> = {}): Facts {
   return {
@@ -19,6 +19,18 @@ describe('cover lines', () => {
     expect(factLines(facts({ minutes: 1 }), 0)).toContainEqual({ kind: 'time', text: '1 минута' })
     expect(factLines(facts(), 2)).toContainEqual({ kind: 'steps', text: '2 шага' })
     expect(factLines(facts(), 5)).toContainEqual({ kind: 'steps', text: '5 шагов' })
+  })
+
+  it('counts every sheet size on the cover', () => {
+    const line = (paper: string) => factLines(facts({ paper }), 0).find(item => item.kind === 'paper')?.text
+    expect(line('15cm x 15cm / 2')).toBe('2 листа по 15 см')
+    expect(line('15×15 cm / 2')).toBe('2 листа по 15 см')
+    expect(line('15×15 cm / 4')).toBe('4 листа по 15 см')
+    expect(line('15×15 cm/2 7.5×7.5 cm/2')).toBe('2 листа по 15 см и 2 листа по 7.5 см')
+    expect(line('a square of paper')).toBe('1 лист, a square of paper')
+    expect(paperLine('15×20 cm')).toBe('1 лист по 15×20 см')
+    expect(capturePaper('Folding time: 20 minutes Paper: 15×15 cm / 4 Total steps: 11')).toBe('15×15 cm / 4')
+    expect(capturePaper('Paper: 15×15 cm/2 7.5×7.5 cm/2 Difficulty: easy')).toBe('15×15 cm/2 7.5×7.5 cm/2')
   })
 
   it('counts cutting as scissors and keeps glue', () => {
