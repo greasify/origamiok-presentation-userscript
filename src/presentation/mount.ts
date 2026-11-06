@@ -3,11 +3,12 @@ import { el } from '@zero-dependency/dom'
 import presentationCss from '../presentation.scss?inline'
 import { beginTranslation, cachedTranslation, translatorAvailability } from '../translate'
 import {
-  CLOSE_ICON,
   CREASE,
+  EXIT_ICON,
   FONT_HREF,
   LAUNCH_LABEL,
   NEXT_ICON,
+  OVERVIEW_ICON,
   PREV_ICON,
   sealButton,
   STAGE_HEIGHT,
@@ -37,6 +38,8 @@ export function mountPresentation(page: PageModel) {
   host.style.inset = '0'
   host.style.zIndex = '2147483646'
   host.style.pointerEvents = 'none'
+  host.style.setProperty('--stage-w', String(STAGE_WIDTH))
+  host.style.setProperty('--stage-h', String(STAGE_HEIGHT))
   const shadow = host.attachShadow({ mode: 'open' })
   const style = el('style', presentationCss)
   const fonts = el('link')
@@ -66,15 +69,15 @@ export function mountPresentation(page: PageModel) {
   const bar = el('div', { className: 'bar' })
   const pager = el('div', { className: 'pager' })
   const prev = sealButton('', 'Назад', PREV_ICON)
-  const counter = el('button', { className: 'counter' })
-  counter.type = 'button'
-  counter.setAttribute('aria-expanded', 'false')
+  const counter = el('span', { className: 'counter' })
   const next = sealButton('', 'Дальше', NEXT_ICON)
+  const overviewButton = sealButton('', 'Все слайды', OVERVIEW_ICON)
+  overviewButton.setAttribute('aria-expanded', 'false')
   const status = el('span', { className: 'status' })
-  const closeButton = sealButton('', 'Закрыть', CLOSE_ICON)
+  const closeButton = sealButton('', 'Закрыть', EXIT_ICON)
   status.setAttribute('aria-live', 'polite')
   pager.append(prev, counter, next)
-  bar.append(pager, status, closeButton)
+  bar.append(pager, overviewButton, closeButton, status)
 
   const photo = createLightbox(overlay, unlockEscape)
 
@@ -107,7 +110,7 @@ export function mountPresentation(page: PageModel) {
       slide.root.setAttribute('aria-hidden', active ? 'false' : 'true')
     })
     counter.textContent = `${index + 1} / ${total}`
-    counter.setAttribute('aria-label', `Все слайды, ${index + 1} из ${total}`)
+    overviewButton.setAttribute('aria-label', `Все слайды, ${index + 1} из ${total}`)
     prev.disabled = index === 0
     next.disabled = index === total - 1
     stage.setAttribute('aria-label', `Слайд ${index + 1} из ${total}`)
@@ -119,7 +122,7 @@ export function mountPresentation(page: PageModel) {
   const overview = createOverview(rendered.map(slide => slide.root), (picked) => {
     show(picked)
   }, () => {
-    counter.setAttribute('aria-expanded', 'false')
+    overviewButton.setAttribute('aria-expanded', 'false')
   })
   overlay.insertBefore(overview.root, photo.root)
 
@@ -170,6 +173,15 @@ export function mountPresentation(page: PageModel) {
     }).catch(() => {})
   }
 
+  const toggleOverview = () => {
+    if (overview.isOpen()) {
+      overview.close()
+      return
+    }
+    overviewButton.setAttribute('aria-expanded', 'true')
+    overview.open(index)
+  }
+
   onKey = (event: KeyboardEvent) => {
     const key = event.key
     if (key === 'Escape') {
@@ -194,6 +206,11 @@ export function mountPresentation(page: PageModel) {
     if (event.code === 'KeyF') {
       event.preventDefault()
       toggleFullscreen()
+      return
+    }
+    if (event.code === 'KeyO' && !event.altKey && !event.ctrlKey && !event.metaKey) {
+      event.preventDefault()
+      toggleOverview()
       return
     }
     if (key === 'Home') {
@@ -242,20 +259,24 @@ export function mountPresentation(page: PageModel) {
     if (!(event.target instanceof Element)) return
     const frame = event.target.closest('.photo-frame')
     const img = frame?.querySelector('img')
-    if (!img?.src) return
-    photo.open(img.currentSrc || img.src, img.alt)
+    if (!frame || !img?.src) return
+    const show = frame.closest('.photo-show')
+    const images = show
+      ? [...show.querySelectorAll<HTMLImageElement>('.sheet-photo')]
+      : [img]
+    const index = Math.max(0, images.indexOf(img))
+    photo.open(
+      images.map(image => ({ src: image.currentSrc || image.src, alt: image.alt })),
+      index,
+      show
+        ? next => show.querySelectorAll<HTMLButtonElement>('.photo-dot')[next]?.click()
+        : undefined,
+    )
     holdEscape()
   })
   prev.addEventListener('click', () => go(-1))
   next.addEventListener('click', () => go(1))
-  counter.addEventListener('click', () => {
-    if (overview.isOpen()) {
-      overview.close()
-      return
-    }
-    counter.setAttribute('aria-expanded', 'true')
-    overview.open(index)
-  })
+  overviewButton.addEventListener('click', toggleOverview)
   closeButton.addEventListener('click', close)
 
   const enqueue = (translator: NonNullable<Awaited<ReturnType<typeof beginTranslation>>>) => {

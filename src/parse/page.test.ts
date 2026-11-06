@@ -17,6 +17,9 @@ describe('swan fixture', () => {
 
     const page = parsePage(doc, content)
     expect(page.modelName).toBe('Swan')
+    const material = page.sections.find(section => section.heading === 'Material')
+    expect(material?.paragraphs[0]).toMatch(/square paper/)
+    expect(material?.images.map(image => image.alt)).toEqual(['Square paper'])
     expect(page.youtubeId).toBe('xeFapLWCJPs')
     expect(page.steps.map(item => item.n)).toEqual([1, 2])
     expect(toolLines(page.steps)).toEqual([

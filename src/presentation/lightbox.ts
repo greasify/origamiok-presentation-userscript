@@ -1,5 +1,10 @@
 import { el } from '@zero-dependency/dom'
-import { CLOSE_ICON, MINUS_ICON, PLUS_ICON, sealButton } from './dom'
+import { CLOSE_ICON, MINUS_ICON, NEXT_ICON, PLUS_ICON, PREV_ICON, sealButton } from './dom'
+
+export interface LightboxPhoto {
+  src: string
+  alt: string
+}
 
 const ZOOM_MIN = 1
 const ZOOM_MAX = 5
@@ -9,7 +14,7 @@ const WHEEL_SETTLE_MS = 200
 
 export interface LightboxController {
   root: HTMLElement
-  open: (src: string, alt: string) => void
+  open: (photos: readonly LightboxPhoto[], index: number, onIndex?: (index: number) => void) => void
   close: () => void
   isOpen: () => boolean
   onKey: (event: KeyboardEvent) => boolean
@@ -22,21 +27,28 @@ export function createLightbox(overlay: HTMLElement, onClose: () => void): Light
   root.setAttribute('aria-modal', 'true')
   root.setAttribute('aria-label', 'Фото на весь экран')
   const stage = el('div', { className: 'lightbox-stage' })
+  const frame = el('div', { className: 'lightbox-frame' })
   const photo = el('img', { className: 'lightbox-photo' })
   photo.draggable = false
   const tools = el('div', { className: 'lightbox-tools' })
   const zoomOut = sealButton('', 'Уменьшить', MINUS_ICON)
   const zoomIn = sealButton('', 'Увеличить', PLUS_ICON)
   const closeButton = sealButton('lightbox-close', 'Закрыть', CLOSE_ICON)
-  stage.append(photo)
-  tools.append(zoomOut, zoomIn, closeButton)
-  root.append(stage, tools)
+  const prev = sealButton('lightbox-nav is-prev', 'Предыдущее фото', PREV_ICON)
+  const next = sealButton('lightbox-nav is-next', 'Следующее фото', NEXT_ICON)
+  tools.append(zoomOut, zoomIn)
+  frame.append(photo)
+  stage.append(frame)
+  root.append(stage, tools, prev, next, closeButton)
 
   let magnification = ZOOM_MIN
   let panX = 0
   let panY = 0
   let dragged = false
   let settleTimer = 0
+  let photos: readonly LightboxPhoto[] = []
+  let index = 0
+  let onIndex: ((index: number) => void) | null = null
 
   const paintMagnification = () => {
     photo.style.transform = `translate(${panX}px, ${panY}px) scale(${magnification})`
@@ -93,6 +105,10 @@ export function createLightbox(overlay: HTMLElement, onClose: () => void): Light
     photo.removeAttribute('src')
     photo.alt = ''
     photo.style.transform = ''
+    photos = []
+    onIndex = null
+    prev.hidden = true
+    next.hidden = true
     setMagnification(ZOOM_MIN)
   }
 
@@ -101,9 +117,28 @@ export function createLightbox(overlay: HTMLElement, onClose: () => void): Light
     onClose()
   }
 
-  const open = (src: string, alt: string) => {
-    photo.src = src
-    photo.alt = alt
+  const paintNav = () => {
+    const many = photos.length > 1
+    prev.hidden = !many
+    next.hidden = !many
+  }
+
+  const showPhoto = (nextIndex: number, notify = true) => {
+    if (!photos.length) return
+    index = (nextIndex + photos.length) % photos.length
+    const item = photos[index]
+    if (!item) return
+    photo.src = item.src
+    photo.alt = item.alt
+    setMagnification(ZOOM_MIN)
+    if (notify) onIndex?.(index)
+  }
+
+  const open = (items: readonly LightboxPhoto[], start: number, follow?: (index: number) => void) => {
+    photos = items
+    onIndex = follow ?? null
+    paintNav()
+    showPhoto(start, false)
     overlay.classList.add('is-zoomed')
     root.hidden = false
   }
@@ -126,6 +161,11 @@ export function createLightbox(overlay: HTMLElement, onClose: () => void): Light
       setMagnification(ZOOM_MIN)
       return true
     }
+    if ((key === 'ArrowLeft' || key === 'ArrowRight') && photos.length > 1) {
+      event.preventDefault()
+      showPhoto(index + (key === 'ArrowRight' ? 1 : -1))
+      return true
+    }
     event.preventDefault()
     return true
   }
@@ -139,6 +179,8 @@ export function createLightbox(overlay: HTMLElement, onClose: () => void): Light
     if (target === root || target === stage) dismiss()
   })
   closeButton.addEventListener('click', dismiss)
+  prev.addEventListener('click', () => showPhoto(index - 1))
+  next.addEventListener('click', () => showPhoto(index + 1))
   zoomIn.addEventListener('click', () => setMagnification(magnification * ZOOM_STEP))
   zoomOut.addEventListener('click', () => setMagnification(magnification / ZOOM_STEP))
   stage.addEventListener('dblclick', (event) => {

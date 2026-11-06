@@ -6,9 +6,12 @@ import { factLines, toolLines } from '../parse-page'
 import { capitalLead } from '../parse/title'
 import { cachedTranslation } from '../translate'
 import { FACT_ICONS, photoFrame } from './dom'
+import { photoShow } from './slideshow'
+
+const MATERIAL_HEADING = /^material$/i
 
 interface SlideModel {
-  kind: 'cover' | 'step' | 'section' | 'end' | 'related'
+  kind: 'cover' | 'step' | 'section' | 'material' | 'end' | 'related'
   title: string
   body: string[]
   images: Photo[]
@@ -40,6 +43,38 @@ function splitLead(paragraphs: string[]) {
   }
 }
 
+function uniquePhotos(images: Photo[]) {
+  const seen = new Set<string>()
+  const unique: Photo[] = []
+  for (const image of images) {
+    if (seen.has(image.url)) continue
+    seen.add(image.url)
+    unique.push(image)
+  }
+  return unique
+}
+
+function materialSlide(page: PageModel): SlideModel | null {
+  const material = page.sections.find(section => MATERIAL_HEADING.test(section.heading))
+  if (!material) return null
+  const intro = page.sections.find(section => section.heading === 'Intro')
+  const extra = (intro?.images ?? []).filter(image => image.url !== page.hero?.url)
+  const images = uniquePhotos([...material.images, ...extra])
+  const body = sectionBody(material)
+  if (!body.length && !images.length) return null
+  return {
+    kind: 'material',
+    title: material.heading,
+    body,
+    images,
+    facts: [],
+    cards: [],
+    n: 0,
+    href: '',
+    youtubeId: null,
+  }
+}
+
 function sectionBody(section: SectionBlock) {
   const lists = section.heading === 'Intro' ? [] : section.lists.flat()
   return [...section.paragraphs, ...lists].map(item => item.trim()).filter(Boolean)
@@ -59,12 +94,13 @@ function slidesOf(page: PageModel): SlideModel[] {
   }]
 
   if (page.steps.length > 0) {
+    const material = materialSlide(page)
+    if (material) slides.push(material)
     for (const step of page.steps) {
-      const copy = splitLead(step.paragraphs)
       slides.push({
         kind: 'step',
-        title: copy.title || `Step ${step.n}`,
-        body: copy.body,
+        title: '',
+        body: step.paragraphs.map(item => item.trim()).filter(Boolean),
         images: step.images,
         facts: [],
         cards: [],
@@ -130,11 +166,7 @@ function renderPhotos(images: Photo[], label: string) {
   const first = images[0]
   if (!first) return null
   if (images.length === 1) return photoFrame(first, label)
-  const row = el('div', { className: 'photo-row' })
-  for (const [index, image] of images.entries()) {
-    row.append(photoFrame(image, image.alt || (index === images.length - 1 ? label : '')))
-  }
-  return row
+  return photoShow(images, label)
 }
 
 function paint(node: HTMLElement, text: string) {
@@ -182,13 +214,19 @@ function renderStep(slide: SlideModel, sink: CopySink) {
   const split = el('div', { className: slide.images.length ? 'fold-split' : 'fold-split solo' })
   const copy = el('div', { className: 'copy' })
   if (slide.kind === 'step') copy.append(el('span', { className: 'step-seal' }, String(slide.n)))
-  const title = el('h1')
-  bind(title, slide.title, sink)
-  copy.append(title)
-  for (const paragraph of slide.body) {
-    const line = el('p')
-    bind(line, paragraph, sink)
-    copy.append(line)
+  if (slide.kind !== 'step' && slide.title) {
+    const title = el('h1')
+    bind(title, slide.title, sink)
+    copy.append(title)
+  }
+  if (slide.body.length) {
+    const body = el('div', { className: 'copy-body' })
+    for (const paragraph of slide.body) {
+      const line = el('p')
+      bind(line, paragraph, sink)
+      body.append(line)
+    }
+    copy.append(body)
   }
   split.append(copy)
   const photo = renderPhotos(slide.images, slide.title)

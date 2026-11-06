@@ -2,8 +2,8 @@ import type { Photo } from '../parse-page'
 import type { CoverFactKind } from '../parse/cover'
 import { el } from '@zero-dependency/dom'
 
-export const STAGE_WIDTH = 980
-export const STAGE_HEIGHT = 551
+export const STAGE_WIDTH = 1024
+export const STAGE_HEIGHT = 600
 export const LAUNCH_LABEL = 'Открыть презентацию'
 export const FONT_HREF = 'https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600&family=Unbounded:wght@600&display=swap'
 
@@ -22,8 +22,10 @@ function strokeIcon(path: string) {
 
 const ZOOM_ICON = strokeIcon('M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5')
 export const CLOSE_ICON = strokeIcon('M6 6l12 12M18 6L6 18')
+export const EXIT_ICON = strokeIcon('M9 4H5v16h4M10 12h10M16 8l4 4-4 4')
 export const PREV_ICON = strokeIcon('M14 6 8 12l6 6')
 export const NEXT_ICON = strokeIcon('M10 6l6 6-6 6')
+export const OVERVIEW_ICON = strokeIcon('M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z')
 export const PLUS_ICON = strokeIcon('M12 6v12M6 12h12')
 export const MINUS_ICON = strokeIcon('M6 12h12')
 

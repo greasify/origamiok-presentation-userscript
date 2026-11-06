@@ -1,4 +1,5 @@
 import { el } from '@zero-dependency/dom'
+import { STAGE_WIDTH } from './dom'
 
 export interface OverviewController {
   root: HTMLElement
@@ -6,6 +7,22 @@ export interface OverviewController {
   close: () => void
   isOpen: () => boolean
   onKey: (event: KeyboardEvent) => boolean
+}
+
+function freezeShow(copy: HTMLElement) {
+  const slots = copy.querySelectorAll<HTMLElement>('.photo-slot')
+  if (slots.length < 2) return
+  slots.forEach((slot, slotIndex) => {
+    slot.hidden = slotIndex !== 0
+  })
+  copy.querySelectorAll('.photo-dot').forEach((dot, dotIndex) => {
+    const current = dotIndex === 0
+    dot.classList.toggle('is-current', current)
+    if (current) dot.setAttribute('aria-current', 'true')
+    else dot.removeAttribute('aria-current')
+  })
+  const bar = copy.querySelector('.photo-progress span')
+  if (bar instanceof HTMLElement) bar.style.transform = 'scaleX(0)'
 }
 
 export function createOverview(
@@ -29,7 +46,7 @@ export function createOverview(
       const frame = card.querySelector('.overview-frame')
       const scale = card.querySelector('.overview-scale')
       if (!(frame instanceof HTMLElement) || !(scale instanceof HTMLElement)) continue
-      const thumb = frame.clientWidth / 980
+      const thumb = frame.clientWidth / STAGE_WIDTH
       if (thumb > 0) scale.style.setProperty('--thumb', String(thumb))
     }
   }
@@ -64,6 +81,7 @@ export function createOverview(
     slides.forEach((slide, index) => {
       const copy = slide.cloneNode(true)
       if (!(copy instanceof HTMLElement)) return
+      freezeShow(copy)
       copy.classList.remove('is-active')
       copy.inert = true
       const scale = el('span', { className: 'overview-scale' })
