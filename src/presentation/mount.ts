@@ -25,6 +25,7 @@ import {
   unmountPresentation,
 } from './host'
 import { createLightbox } from './lightbox'
+import { createOverview } from './overview'
 import { applyText, renderSlides } from './slides'
 
 export function mountPresentation(page: PageModel) {
@@ -65,7 +66,9 @@ export function mountPresentation(page: PageModel) {
   const bar = el('div', { className: 'bar' })
   const pager = el('div', { className: 'pager' })
   const prev = sealButton('', 'Назад', PREV_ICON)
-  const counter = el('span', { className: 'counter' })
+  const counter = el('button', { className: 'counter' })
+  counter.type = 'button'
+  counter.setAttribute('aria-expanded', 'false')
   const next = sealButton('', 'Дальше', NEXT_ICON)
   const status = el('span', { className: 'status' })
   const closeButton = sealButton('', 'Закрыть', CLOSE_ICON)
@@ -104,6 +107,7 @@ export function mountPresentation(page: PageModel) {
       slide.root.setAttribute('aria-hidden', active ? 'false' : 'true')
     })
     counter.textContent = `${index + 1} / ${total}`
+    counter.setAttribute('aria-label', `Все слайды, ${index + 1} из ${total}`)
     prev.disabled = index === 0
     next.disabled = index === total - 1
     stage.setAttribute('aria-label', `Слайд ${index + 1} из ${total}`)
@@ -111,6 +115,13 @@ export function mountPresentation(page: PageModel) {
   }
 
   const go = (delta: number) => show(index + delta)
+
+  const overview = createOverview(rendered.map(slide => slide.root), (picked) => {
+    show(picked)
+  }, () => {
+    counter.setAttribute('aria-expanded', 'false')
+  })
+  overlay.insertBefore(overview.root, photo.root)
 
   let onKey: (event: KeyboardEvent) => void = () => {}
   let suppressFullscreenExit = false
@@ -136,6 +147,7 @@ export function mountPresentation(page: PageModel) {
 
   const close = () => {
     photo.close()
+    overview.close()
     unlockEscape()
     overlay.hidden = true
     launch.hidden = false
@@ -173,10 +185,12 @@ export function mountPresentation(page: PageModel) {
         })
         return
       }
+      if (overview.onKey(event)) return
       close()
       return
     }
     if (photo.onKey(event)) return
+    if (overview.onKey(event)) return
     if (event.code === 'KeyF') {
       event.preventDefault()
       toggleFullscreen()
@@ -234,6 +248,14 @@ export function mountPresentation(page: PageModel) {
   })
   prev.addEventListener('click', () => go(-1))
   next.addEventListener('click', () => go(1))
+  counter.addEventListener('click', () => {
+    if (overview.isOpen()) {
+      overview.close()
+      return
+    }
+    counter.setAttribute('aria-expanded', 'true')
+    overview.open(index)
+  })
   closeButton.addEventListener('click', close)
 
   const enqueue = (translator: NonNullable<Awaited<ReturnType<typeof beginTranslation>>>) => {

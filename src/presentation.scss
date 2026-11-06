@@ -670,6 +670,10 @@ a {
 .counter {
   display: grid;
   place-items: center;
+  cursor: pointer;
+  border: 0;
+  background: transparent;
+  padding: 0;
   min-width: 4.75em;
   height: var(--control);
   color: #fffaf3;
@@ -678,6 +682,91 @@ a {
   font-family: Unbounded, 'Avenir Next', sans-serif;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.03em;
+
+  &:focus-visible {
+    outline: 2px solid #fffaf3;
+    outline-offset: -4px;
+  }
+}
+
+.overview {
+  position: absolute;
+  z-index: 4;
+  inset: 0;
+  bottom: calc(var(--control) + 20px);
+  background: var(--paper);
+  padding: 28px 32px 20px;
+  overflow: auto;
+
+  &[hidden] {
+    display: none;
+  }
+}
+
+.overlay.is-fullscreen .overview {
+  bottom: 0;
+}
+
+.overview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.overview-card {
+  display: block;
+  position: relative;
+  cursor: pointer;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  width: 100%;
+  text-align: start;
+
+  &:focus-visible .overview-frame,
+  &.is-current .overview-frame {
+    outline: 3px solid var(--seal);
+    outline-offset: 4px;
+  }
+}
+
+.overview-frame {
+  display: block;
+  position: relative;
+  box-shadow: var(--stamp);
+  background: var(--paper);
+  aspect-ratio: 980 / 551;
+  overflow: hidden;
+}
+
+.overview-scale {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform: scale(var(--thumb, 0.2));
+  transform-origin: top left;
+  width: 980px;
+  height: 551px;
+  pointer-events: none;
+}
+
+.overview .slide {
+  opacity: 1;
+  pointer-events: none;
+}
+
+.overview-index {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  z-index: 1;
+  background: var(--seal);
+  padding: 2px 7px;
+  color: #fffaf3;
+  font-weight: 600;
+  font-size: 13px;
+  font-family: Unbounded, 'Avenir Next', sans-serif;
+  font-variant-numeric: tabular-nums;
 }
 
 .status {
