@@ -176,6 +176,8 @@ function paint(node: HTMLElement, text: string) {
 function bind(node: HTMLElement, source: string, sink: CopySink) {
   const text = source.trim()
   if (!text) return
+  node.classList.add('is-copy')
+  node.dataset.source = text
   paint(node, cachedTranslation(text) ?? text)
   const bucket = sink.bindings.get(text) ?? new Set<HTMLElement>()
   bucket.add(node)
@@ -209,6 +211,12 @@ function renderCover(slide: SlideModel, sink: CopySink) {
   return root
 }
 
+function copyEdge(className: string) {
+  const edge = el('div', { className })
+  edge.setAttribute('aria-hidden', 'true')
+  return edge
+}
+
 function renderStep(slide: SlideModel, sink: CopySink) {
   const root = el('article', { className: 'slide paper-step' })
   const split = el('div', { className: slide.images.length ? 'fold-split' : 'fold-split solo' })
@@ -221,6 +229,7 @@ function renderStep(slide: SlideModel, sink: CopySink) {
   }
   if (slide.body.length) {
     const body = el('div', { className: 'copy-body' })
+    body.append(copyEdge('copy-edge copy-edge-top'), copyEdge('copy-edge copy-edge-bottom'))
     for (const paragraph of slide.body) {
       const line = el('p')
       bind(line, paragraph, sink)
@@ -250,7 +259,7 @@ function renderSection(slide: SlideModel, sink: CopySink) {
   return root
 }
 
-function qrLink(href: string, label: string, sink: CopySink) {
+function qrLink(href: string, label: string) {
   const link = el('a', { className: 'qr-link' })
   link.href = href
   link.target = '_blank'
@@ -263,7 +272,7 @@ function qrLink(href: string, label: string, sink: CopySink) {
     whiteColor: '#f3ecdf',
   })
   const caption = el('span')
-  bind(caption, label, sink)
+  caption.textContent = label
   link.append(mark, caption)
   return link
 }
@@ -274,8 +283,8 @@ function renderEnd(slide: SlideModel, sink: CopySink) {
   bind(title, slide.title, sink)
   root.append(title)
   const row = el('div', { className: 'qr-row' })
-  if (slide.href) row.append(qrLink(slide.href, 'С картинками', sink))
-  if (slide.youtubeId) row.append(qrLink(`https://www.youtube.com/watch?v=${slide.youtubeId}`, 'Видео', sink))
+  if (slide.href) row.append(qrLink(slide.href, 'С картинками'))
+  if (slide.youtubeId) row.append(qrLink(`https://www.youtube.com/watch?v=${slide.youtubeId}`, 'Видео'))
   if (row.childElementCount) root.append(row)
   return root
 }

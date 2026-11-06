@@ -44,6 +44,7 @@ const STORE_KEY = 'origami-presentation:v1:en:ru'
 
 const memory = new Map<string, string>()
 const pending = new Map<string, Job>()
+const revision = new Map<string, number>()
 let dictionary: Record<string, string> | null = null
 let active = 0
 let scheduled = false
@@ -86,9 +87,40 @@ export function cachedTranslation(text: string) {
   return hit
 }
 
-function remember(text: string, translated: string) {
+function rev(text: string) {
+  return revision.get(text) ?? 0
+}
+
+function bump(text: string) {
+  revision.set(text, rev(text) + 1)
+}
+
+function writeCache(text: string, translated: string) {
   memory.set(text, translated)
   loadDictionary()[text] = translated
+  persistDictionary()
+}
+
+export function saveTranslation(text: string, translated: string) {
+  const source = text.trim()
+  const value = translated.trim()
+  if (!source || !value) return
+  bump(source)
+  writeCache(source, value)
+  const job = pending.get(source)
+  if (!job) return
+  pending.delete(source)
+  settle(job, value)
+}
+
+export function invalidateTranslation(text: string) {
+  const source = text.trim()
+  if (!source) return
+  bump(source)
+  memory.delete(source)
+  const store = loadDictionary()
+  if (!(source in store)) return
+  delete store[source]
   persistDictionary()
 }
 
@@ -120,12 +152,17 @@ function pump() {
   const job = best
   pending.delete(job.text)
   active = 1
+  const stamp = rev(job.text)
   void engine.translate(job.text).then((out) => {
     const clean = typeof out === 'string' && out.trim() ? out.trim() : job.text
-    remember(job.text, clean)
+    if (rev(job.text) !== stamp) {
+      settle(job, cachedTranslation(job.text) ?? clean)
+      return
+    }
+    writeCache(job.text, clean)
     settle(job, clean)
   }).catch(() => {
-    settle(job, job.text)
+    settle(job, cachedTranslation(job.text) ?? job.text)
   }).finally(() => {
     active = 0
     pump()

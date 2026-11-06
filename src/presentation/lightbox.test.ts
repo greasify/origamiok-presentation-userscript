@@ -24,11 +24,19 @@ describe('lightbox photos', () => {
       { src: 'https://origamiok.com/1.webp', alt: 'Two' },
     ], 0)
     const image = photo(lightbox)
+    const zoom = lightbox.root.querySelector<HTMLButtonElement>('[aria-label="Увеличить"]')
+    zoom?.click()
+    expect(image?.style.transform).toBe('translate(0px, 0px) scale(1.5)')
+    expect(zoom?.getAttribute('aria-pressed')).toBe('true')
+    zoom?.click()
+    expect(image?.style.transform).toBe('translate(0px, 0px) scale(1)')
+    expect(lightbox.root.querySelector('[aria-label="Увеличить"]')?.getAttribute('aria-pressed')).toBe('false')
     lightbox.root.querySelector<HTMLButtonElement>('[aria-label="Увеличить"]')?.click()
-    expect(image?.style.transform).toBe('translate(0px, 0px) scale(1.25)')
 
+    expect(image?.classList.contains('is-entering')).toBe(false)
     lightbox.onKey(new KeyboardEvent('keydown', { key: 'ArrowRight' }))
     expect(image?.getAttribute('src')).toBe('https://origamiok.com/1.webp')
+    expect(image?.classList.contains('is-entering')).toBe(true)
     expect(image?.style.transform).toBe('translate(0px, 0px) scale(1)')
 
     lightbox.onKey(new KeyboardEvent('keydown', { key: 'ArrowRight' }))

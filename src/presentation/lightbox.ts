@@ -1,5 +1,11 @@
 import { el } from '@zero-dependency/dom'
-import { CLOSE_ICON, MINUS_ICON, NEXT_ICON, PLUS_ICON, PREV_ICON, sealButton } from './dom'
+import {
+  CLOSE_ICON,
+  MAGNIFY_ICON,
+  NEXT_ICON,
+  PREV_ICON,
+  sealButton,
+} from './dom'
 
 export interface LightboxPhoto {
   src: string
@@ -8,7 +14,8 @@ export interface LightboxPhoto {
 
 const ZOOM_MIN = 1
 const ZOOM_MAX = 5
-const ZOOM_STEP = 1.25
+const ZOOM_STEP = 1.1
+const ZOOM_JUMP = 1.5
 const WHEEL_ZOOM = 1.05
 const WHEEL_SETTLE_MS = 200
 
@@ -30,16 +37,14 @@ export function createLightbox(overlay: HTMLElement, onClose: () => void): Light
   const frame = el('div', { className: 'lightbox-frame' })
   const photo = el('img', { className: 'lightbox-photo' })
   photo.draggable = false
-  const tools = el('div', { className: 'lightbox-tools' })
-  const zoomOut = sealButton('', 'Уменьшить', MINUS_ICON)
-  const zoomIn = sealButton('', 'Увеличить', PLUS_ICON)
+  const zoomButton = sealButton('lightbox-zoom', 'Увеличить', MAGNIFY_ICON)
+  zoomButton.setAttribute('aria-pressed', 'false')
   const closeButton = sealButton('lightbox-close', 'Закрыть', CLOSE_ICON)
   const prev = sealButton('lightbox-nav is-prev', 'Предыдущее фото', PREV_ICON)
   const next = sealButton('lightbox-nav is-next', 'Следующее фото', NEXT_ICON)
-  tools.append(zoomOut, zoomIn)
   frame.append(photo)
   stage.append(frame)
-  root.append(stage, tools, prev, next, closeButton)
+  root.append(stage, prev, next, zoomButton, closeButton)
 
   let magnification = ZOOM_MIN
   let panX = 0
@@ -52,9 +57,10 @@ export function createLightbox(overlay: HTMLElement, onClose: () => void): Light
 
   const paintMagnification = () => {
     photo.style.transform = `translate(${panX}px, ${panY}px) scale(${magnification})`
-    stage.classList.toggle('is-magnified', magnification > ZOOM_MIN)
-    zoomOut.disabled = magnification <= ZOOM_MIN
-    zoomIn.disabled = magnification >= ZOOM_MAX
+    const zoomed = magnification > ZOOM_MIN
+    stage.classList.toggle('is-magnified', zoomed)
+    zoomButton.setAttribute('aria-pressed', zoomed ? 'true' : 'false')
+    zoomButton.setAttribute('aria-label', zoomed ? 'Сбросить увеличение' : 'Увеличить')
   }
 
   const clampAxis = (value: number, limit: number, strict: boolean) => {
@@ -104,6 +110,7 @@ export function createLightbox(overlay: HTMLElement, onClose: () => void): Light
     overlay.classList.remove('is-zoomed')
     photo.removeAttribute('src')
     photo.alt = ''
+    photo.classList.remove('is-entering')
     photo.style.transform = ''
     photos = []
     onIndex = null
@@ -128,9 +135,15 @@ export function createLightbox(overlay: HTMLElement, onClose: () => void): Light
     index = (nextIndex + photos.length) % photos.length
     const item = photos[index]
     if (!item) return
+    const animate = !root.hidden && photo.getAttribute('src') !== item.src
     photo.src = item.src
     photo.alt = item.alt
     setMagnification(ZOOM_MIN)
+    if (animate) {
+      photo.classList.remove('is-entering')
+      void photo.offsetWidth
+      photo.classList.add('is-entering')
+    }
     if (notify) onIndex?.(index)
   }
 
@@ -181,11 +194,12 @@ export function createLightbox(overlay: HTMLElement, onClose: () => void): Light
   closeButton.addEventListener('click', dismiss)
   prev.addEventListener('click', () => showPhoto(index - 1))
   next.addEventListener('click', () => showPhoto(index + 1))
-  zoomIn.addEventListener('click', () => setMagnification(magnification * ZOOM_STEP))
-  zoomOut.addEventListener('click', () => setMagnification(magnification / ZOOM_STEP))
+  zoomButton.addEventListener('click', () => {
+    setMagnification(magnification > ZOOM_MIN ? ZOOM_MIN : ZOOM_JUMP)
+  })
   stage.addEventListener('dblclick', (event) => {
     if (!(event.target instanceof Element) || !event.target.closest('.lightbox-photo')) return
-    setMagnification(magnification > ZOOM_MIN ? ZOOM_MIN : 2.5)
+    setMagnification(magnification > ZOOM_MIN ? ZOOM_MIN : ZOOM_JUMP)
   })
   const stopNativeDrag = (event: Event) => {
     event.preventDefault()

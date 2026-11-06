@@ -1,5 +1,5 @@
 import type { PageModel } from '../parse-page'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { applyText, renderSlides } from './slides'
 
 const page: PageModel = {
@@ -17,7 +17,7 @@ const page: PageModel = {
       title: 'frog face',
       href: 'https://origamiok.com/origami-frog-face/',
       image: null,
-      meta: [],
+      meta: ['10 Minutes'],
     }],
   },
 }
@@ -32,14 +32,32 @@ describe('headings', () => {
     expect(cover?.querySelector('h1')?.textContent).toBe('Лебедь')
 
     const step = rendered[1]?.root
+    const paragraph = step?.querySelector('p')
     expect(step?.querySelector('h1')).toBeNull()
-    expect(step?.querySelector('p')?.textContent).toBe('fold the corner. leave it flat.')
+    expect(paragraph?.textContent).toBe('fold the corner. leave it flat.')
+    expect(paragraph?.classList.contains('is-copy')).toBe(true)
+    expect(paragraph?.dataset.source).toBe('fold the corner. leave it flat.')
     applyText(bindings, 'fold the corner. leave it flat.', 'сложи угол. оставь лист.')
-    expect(step?.querySelector('p')?.textContent).toBe('сложи угол. оставь лист.')
+    expect(paragraph?.textContent).toBe('сложи угол. оставь лист.')
 
     const related = rendered.at(-1)?.root
+    const cardTitle = related?.querySelector('strong')
+    const cardMeta = related?.querySelector('.related-meta span')
+    expect(cardTitle?.classList.contains('is-copy')).toBe(true)
+    expect(cardTitle?.dataset.source).toBe('frog face')
+    expect(cardMeta?.textContent).toBe('10 Minutes')
+    expect(cardMeta?.classList.contains('is-copy')).toBe(true)
+    expect(cardMeta?.dataset.source).toBe('10 Minutes')
+    applyText(bindings, '10 Minutes', '10 минут')
+    expect(cardMeta?.textContent).toBe('10 минут')
     applyText(bindings, 'frog face', 'лицо лягушки')
-    expect(related?.querySelector('strong')?.textContent).toBe('Лицо лягушки')
+    expect(cardTitle?.textContent).toBe('Лицо лягушки')
+
+    const end = rendered.at(-2)?.root
+    const caption = end?.querySelector('.qr-link span:last-child')
+    expect(caption?.textContent).toBe('С картинками')
+    expect(caption?.classList.contains('is-copy')).toBe(false)
+    expect(bindings.has('С картинками')).toBe(false)
   })
 })
 
@@ -104,5 +122,30 @@ describe('material slide', () => {
     const article = renderSlides({ ...instruction('Material'), steps: [] })
     const headings = article.rendered.map(slide => slide.root.querySelector('h1')?.textContent)
     expect(headings.filter(title => title === 'Material')).toEqual(['Material'])
+  })
+})
+
+describe('stored translation', () => {
+  afterEach(() => {
+    localStorage.clear()
+  })
+
+  it('paints a stored translation on the slide and on a related card', async () => {
+    vi.resetModules()
+    localStorage.setItem('origami-presentation:v1:en:ru', JSON.stringify({
+      'fold the corner. leave it flat.': 'прижми угол',
+      'frog face': 'морда лягушки',
+    }))
+    const { renderSlides: renderFresh } = await import('./slides')
+    const { rendered } = renderFresh(page)
+    const paragraph = rendered[1]?.root.querySelector('p')
+    expect(paragraph?.textContent).toBe('прижми угол')
+    expect(paragraph?.dataset.source).toBe('fold the corner. leave it flat.')
+    expect(paragraph?.classList.contains('is-copy')).toBe(true)
+
+    const cardTitle = rendered.at(-1)?.root.querySelector('strong')
+    expect(cardTitle?.textContent).toBe('Морда лягушки')
+    expect(cardTitle?.dataset.source).toBe('frog face')
+    expect(cardTitle?.classList.contains('is-copy')).toBe(true)
   })
 })

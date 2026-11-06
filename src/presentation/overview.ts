@@ -13,7 +13,9 @@ function freezeShow(copy: HTMLElement) {
   const slots = copy.querySelectorAll<HTMLElement>('.photo-slot')
   if (slots.length < 2) return
   slots.forEach((slot, slotIndex) => {
-    slot.hidden = slotIndex !== 0
+    const shown = slotIndex === 0
+    slot.classList.toggle('is-shown', shown)
+    slot.inert = !shown
   })
   copy.querySelectorAll('.photo-dot').forEach((dot, dotIndex) => {
     const current = dotIndex === 0

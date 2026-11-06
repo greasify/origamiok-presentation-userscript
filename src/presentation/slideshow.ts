@@ -32,7 +32,9 @@ export function photoShow(images: Photo[], label: string) {
     const ratio = Math.min(elapsed / HOLD_MS, 1)
     bar.style.transform = `scaleX(${ratio})`
     frames.forEach((frame, frameIndex) => {
-      frame.hidden = frameIndex !== index
+      const shown = frameIndex === index
+      frame.classList.toggle('is-shown', shown)
+      frame.inert = !shown
     })
     const frame = frames[index]
     if (!frame) return

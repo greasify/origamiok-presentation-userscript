@@ -26,8 +26,8 @@ export const EXIT_ICON = strokeIcon('M9 4H5v16h4M10 12h10M16 8l4 4-4 4')
 export const PREV_ICON = strokeIcon('M14 6 8 12l6 6')
 export const NEXT_ICON = strokeIcon('M10 6l6 6-6 6')
 export const OVERVIEW_ICON = strokeIcon('M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z')
-export const PLUS_ICON = strokeIcon('M12 6v12M6 12h12')
-export const MINUS_ICON = strokeIcon('M6 12h12')
+export const EDIT_ICON = strokeIcon('M4 20l4.5-1.2L19 8.3 15.7 5 5.2 15.5 4 20zM14.5 6.2l3.3 3.3')
+export const MAGNIFY_ICON = strokeIcon('M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM21 21l-4.3-4.3')
 
 function factIcon(markup: string) {
   return `<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${markup}</svg>`

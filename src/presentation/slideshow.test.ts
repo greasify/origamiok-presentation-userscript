@@ -16,7 +16,7 @@ const page: PageModel = {
 }
 
 function visibleSrc(show: HTMLElement) {
-  return show.querySelector('.photo-slot:not([hidden]) img')?.getAttribute('src')
+  return show.querySelector('.photo-slot.is-shown img')?.getAttribute('src')
 }
 
 function mount() {

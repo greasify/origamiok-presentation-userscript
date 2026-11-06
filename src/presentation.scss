@@ -45,6 +45,19 @@ a {
   height: var(--control);
   color: #fffaf3;
 
+  &:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--seal) 82%, black);
+  }
+
+  &[aria-pressed='true'] {
+    background: #fffaf3;
+    color: var(--ink);
+  }
+
+  &[aria-pressed='true']:hover:not(:disabled) {
+    background: #f3ecdf;
+  }
+
   &:disabled {
     opacity: 0.35;
     cursor: default;
@@ -79,6 +92,10 @@ a {
 
   &[hidden] {
     display: none;
+  }
+
+  &:hover {
+    background: color-mix(in srgb, var(--seal) 82%, black);
   }
 
   &:focus-visible {
@@ -358,6 +375,7 @@ a {
 
 .copy-body {
   flex: 1;
+  container-type: scroll-state;
   min-height: 0;
   overflow: auto;
   scrollbar-color: #8d7358 transparent;
@@ -379,16 +397,94 @@ a {
   }
 }
 
+.copy-edge {
+  position: sticky;
+  opacity: 0;
+  z-index: 1;
+  margin-bottom: -18px;
+  height: 18px;
+  pointer-events: none;
+}
+
+.copy-edge-top {
+  top: 0;
+  background: linear-gradient(rgb(28 25 21 / 22%), transparent);
+}
+
+.copy-edge-bottom {
+  top: calc(100% - 18px);
+  background: linear-gradient(transparent, rgb(28 25 21 / 22%));
+}
+
+@container scroll-state(scrollable: top) {
+  .copy-edge-top {
+    opacity: 1;
+  }
+}
+
+@container scroll-state(scrollable: bottom) {
+  .copy-edge-bottom {
+    opacity: 1;
+  }
+}
+
 .step-seal {
   display: inline-grid;
   place-items: center;
-  box-shadow: 0 10px 18px rgb(194 59 34 / 22%);
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  box-shadow: 0 6px 8px rgb(194 59 34 / 22%);
   background: var(--seal);
   width: 64px;
   height: 64px;
   color: #fffaf3;
+  font-weight: 600;
   font-size: 32px;
   line-height: 1;
+  font-family: Unbounded, 'Avenir Next', sans-serif;
+  letter-spacing: -0.03em;
+}
+
+.stage-seal {
+  position: absolute;
+  top: 24px;
+  left: 32px;
+  z-index: 2;
+  pointer-events: none;
+
+  &[hidden] {
+    display: none;
+  }
+}
+
+.stage .paper-step {
+  opacity: 1;
+  transition: none;
+
+  .step-seal {
+    opacity: 0;
+  }
+
+  .copy-body,
+  .photo-show,
+  h1 {
+    opacity: 0;
+    transition: opacity 180ms ease;
+  }
+
+  > .fold-split > .photo-slot {
+    opacity: 0;
+    transition: opacity 180ms ease;
+  }
+
+  &.is-active {
+    .copy-body,
+    .photo-show,
+    h1,
+    > .fold-split > .photo-slot {
+      opacity: 1;
+    }
+  }
 }
 
 .photo-slot {
@@ -486,10 +582,15 @@ a {
 
   .photo-slot {
     grid-area: 1 / 1;
-  }
+    opacity: 0;
+    transition: opacity 180ms ease;
+    pointer-events: none;
 
-  .photo-slot[hidden] {
-    display: none;
+    &.is-shown {
+      opacity: 1;
+      z-index: 1;
+      pointer-events: auto;
+    }
   }
 
   .photo-frame {
@@ -561,11 +662,111 @@ a {
 
 .overlay.is-fullscreen .bar:hover,
 .overlay.is-fullscreen .bar:focus-within,
-.overlay.is-fullscreen:has(.overview:not([hidden])) .bar {
+.overlay.is-fullscreen:has(.overview:not([hidden])) .bar,
+.overlay.is-fullscreen.is-editing .bar {
   transform: none;
 
   &::before {
     content: none;
+  }
+}
+
+.overlay.is-editing .is-copy {
+  cursor: pointer;
+  outline: 2px dashed var(--seal);
+  outline-offset: 3px;
+}
+
+.overlay.is-editing .copy {
+  overflow: clip;
+  overflow-clip-margin: 8px;
+}
+
+.overlay.is-editing .copy-body .is-copy {
+  outline: none;
+  border: 2px dashed var(--seal);
+}
+
+.copy-editor {
+  display: flex;
+  position: absolute;
+  bottom: calc(var(--control) + 28px);
+  left: 50%;
+  flex-direction: column;
+  gap: 10px;
+  transform: translateX(-50%);
+  z-index: 6;
+  box-shadow: var(--stamp);
+  border: 1.5px dashed var(--seal);
+  background: var(--paper);
+  padding: 16px;
+  width: min(560px, calc(100% - 40px));
+  pointer-events: auto;
+
+  &[hidden] {
+    display: none;
+  }
+}
+
+.copy-editor-source {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.copy-editor-field {
+  border: 1px solid var(--muted);
+  background: #fffaf3;
+  padding: 10px 12px;
+  width: 100%;
+  min-height: 96px;
+  resize: vertical;
+  color: var(--ink);
+  font: inherit;
+  line-height: 1.35;
+
+  &:focus-visible {
+    outline: 2px solid var(--ink);
+    outline-offset: 2px;
+  }
+}
+
+.copy-editor-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.copy-editor-reset,
+.copy-editor-cancel,
+.copy-editor-save {
+  cursor: pointer;
+  border: 0;
+  background: transparent;
+  padding: 0 12px;
+  height: var(--control);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 600;
+
+  &:hover {
+    background: rgb(28 25 21 / 8%);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--ink);
+    outline-offset: 3px;
+  }
+}
+
+.copy-editor-save {
+  box-shadow: var(--stamp);
+  background: var(--seal);
+  color: #fffaf3;
+
+  &:hover {
+    background: color-mix(in srgb, var(--seal) 82%, black);
   }
 }
 
@@ -620,19 +821,19 @@ a {
   object-fit: contain;
   user-select: none;
   -webkit-user-drag: none;
+
+  &.is-entering {
+    animation: lightbox-photo-in 180ms ease both;
+  }
 }
 
-.lightbox-tools {
-  display: flex;
-  position: absolute;
-  top: 10px;
-  left: 50%;
-  gap: 8px;
-  transform: translateX(-50%);
-  z-index: 1;
+@keyframes lightbox-photo-in {
+  from {
+    opacity: 0;
+  }
 
-  .seal-button:focus-visible {
-    outline-color: #fffaf3;
+  to {
+    opacity: 1;
   }
 }
 
@@ -659,15 +860,23 @@ a {
   }
 }
 
+.lightbox-zoom,
 .lightbox-close {
   position: absolute;
   top: 10px;
-  right: 10px;
   z-index: 1;
 
   &:focus-visible {
     outline-color: #fffaf3;
   }
+}
+
+.lightbox-zoom {
+  right: calc(10px + var(--control) + 8px);
+}
+
+.lightbox-close {
+  right: 10px;
 }
 
 .paper-section {
@@ -929,7 +1138,14 @@ a {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .slide {
+  .slide,
+  .stage .paper-step .copy-body,
+  .stage .paper-step .photo-show,
+  .stage .paper-step h1,
+  .stage .paper-step > .fold-split > .photo-slot,
+  .photo-frames .photo-slot,
+  .lightbox-photo {
+    animation: none;
     transition: none;
   }
 }

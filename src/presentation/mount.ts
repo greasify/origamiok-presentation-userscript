@@ -1,9 +1,12 @@
 import type { PageModel } from '../parse-page'
+import type { TranslationSession } from '../translate'
+import type { EditorController } from './editor'
 import { el } from '@zero-dependency/dom'
 import presentationCss from '../presentation.scss?inline'
-import { beginTranslation, cachedTranslation, translatorAvailability } from '../translate'
+import { beginTranslation, cachedTranslation, invalidateTranslation, saveTranslation, translatorAvailability } from '../translate'
 import {
   CREASE,
+  EDIT_ICON,
   EXIT_ICON,
   FONT_HREF,
   LAUNCH_LABEL,
@@ -14,6 +17,7 @@ import {
   STAGE_HEIGHT,
   STAGE_WIDTH,
 } from './dom'
+import { createEditor } from './editor'
 import {
   bindFullscreen,
   bindKey,
@@ -63,6 +67,10 @@ export function mountPresentation(page: PageModel) {
   const stage = el('div', { className: 'stage' })
   const { rendered, bindings } = renderSlides(page)
   for (const slide of rendered) stage.append(slide.root)
+  const stageSeal = el('span', { className: 'step-seal stage-seal' })
+  stageSeal.hidden = true
+  stageSeal.setAttribute('aria-hidden', 'true')
+  stage.append(stageSeal)
   slot.append(stage)
   viewport.append(slot)
 
@@ -73,20 +81,72 @@ export function mountPresentation(page: PageModel) {
   const next = sealButton('', 'Дальше', NEXT_ICON)
   const overviewButton = sealButton('', 'Все слайды', OVERVIEW_ICON)
   overviewButton.setAttribute('aria-expanded', 'false')
+  overviewButton.setAttribute('aria-pressed', 'false')
+  const editButton = sealButton('', 'Править текст', EDIT_ICON)
+  editButton.setAttribute('aria-pressed', 'false')
   const status = el('span', { className: 'status' })
   const closeButton = sealButton('', 'Закрыть', EXIT_ICON)
   status.setAttribute('aria-live', 'polite')
   pager.append(prev, counter, next)
-  bar.append(pager, overviewButton, closeButton, status)
+  bar.append(pager, overviewButton, editButton, closeButton, status)
 
   const photo = createLightbox(overlay, unlockEscape)
+  const heldTranslation = new Map<string, string>()
+  const savedNow = new Set<string>()
+  let translatorPromise: Promise<TranslationSession | null> | null = null
+  let editor: EditorController
 
-  overlay.append(field, viewport, bar, photo.root)
+  const applyArrived = (source: string, translated: string) => {
+    if (savedNow.has(source)) return
+    if (editor.editingSource() === source) {
+      heldTranslation.set(source, translated)
+      return
+    }
+    applyText(bindings, source, translated)
+  }
+
+  const paintSaved = (source: string, value: string) => {
+    const trimmed = value.trim()
+    if (!trimmed) {
+      applyText(bindings, source, cachedTranslation(source) ?? source)
+      return
+    }
+    saveTranslation(source, trimmed)
+    savedNow.add(source)
+    applyText(bindings, source, trimmed)
+  }
+
+  const resetTranslation = (source: string) => {
+    savedNow.delete(source)
+    heldTranslation.delete(source)
+    invalidateTranslation(source)
+    applyText(bindings, source, source)
+    if (!translatorPromise) return
+    void translatorPromise.then((translator) => {
+      if (!translator) return
+      return translator.translate(source, 20_000).then((translated) => {
+        applyArrived(source, translated)
+      })
+    })
+  }
+
+  editor = createEditor({
+    onSave: paintSaved,
+    onReset: resetTranslation,
+    onDismiss: (source) => {
+      const translated = heldTranslation.get(source)
+      heldTranslation.delete(source)
+      if (savedNow.has(source) || !translated) return
+      applyText(bindings, source, translated)
+    },
+  })
+
+  overlay.append(field, viewport, bar, editor.root, photo.root)
   shadow.append(style, fonts, launch, overlay)
   document.documentElement.append(host)
 
   let index = 0
-  let session: { prioritize: (texts: readonly string[]) => void } | null = null
+  let session: TranslationSession | null = null
   let wired = false
   let listening = false
   const total = rendered.length
@@ -110,6 +170,9 @@ export function mountPresentation(page: PageModel) {
       slide.root.setAttribute('aria-hidden', active ? 'false' : 'true')
     })
     counter.textContent = `${index + 1} / ${total}`
+    const stepNumber = rendered[index]?.root.querySelector('.step-seal')?.textContent ?? ''
+    stageSeal.textContent = stepNumber
+    stageSeal.hidden = stepNumber.length === 0
     overviewButton.setAttribute('aria-label', `Все слайды, ${index + 1} из ${total}`)
     prev.disabled = index === 0
     next.disabled = index === total - 1
@@ -123,6 +186,7 @@ export function mountPresentation(page: PageModel) {
     show(picked)
   }, () => {
     overviewButton.setAttribute('aria-expanded', 'false')
+    overviewButton.setAttribute('aria-pressed', 'false')
   })
   overlay.insertBefore(overview.root, photo.root)
 
@@ -148,9 +212,25 @@ export function mountPresentation(page: PageModel) {
     void host.requestFullscreen().catch(() => {})
   }
 
+  const editing = () => overlay.classList.contains('is-editing')
+
+  const leaveEditing = () => {
+    editor.close()
+    overlay.classList.remove('is-editing')
+    editButton.setAttribute('aria-pressed', 'false')
+  }
+
+  const enterEditing = () => {
+    photo.close()
+    overview.close()
+    overlay.classList.add('is-editing')
+    editButton.setAttribute('aria-pressed', 'true')
+  }
+
   const close = () => {
     photo.close()
     overview.close()
+    leaveEditing()
     unlockEscape()
     overlay.hidden = true
     launch.hidden = false
@@ -178,11 +258,14 @@ export function mountPresentation(page: PageModel) {
       overview.close()
       return
     }
+    leaveEditing()
     overviewButton.setAttribute('aria-expanded', 'true')
+    overviewButton.setAttribute('aria-pressed', 'true')
     overview.open(index)
   }
 
   onKey = (event: KeyboardEvent) => {
+    if (editor.onKey(event)) return
     const key = event.key
     if (key === 'Escape') {
       event.preventDefault()
@@ -198,6 +281,10 @@ export function mountPresentation(page: PageModel) {
         return
       }
       if (overview.onKey(event)) return
+      if (editing()) {
+        leaveEditing()
+        return
+      }
       close()
       return
     }
@@ -257,6 +344,18 @@ export function mountPresentation(page: PageModel) {
 
   stage.addEventListener('click', (event) => {
     if (!(event.target instanceof Element)) return
+    if (editing()) {
+      const card = event.target.closest('.related-card')
+      if (card) event.preventDefault()
+      const copy = event.target.closest('.is-copy')
+      if (copy instanceof HTMLElement && copy.dataset.source) {
+        event.preventDefault()
+        editor.open({ source: copy.dataset.source, current: copy.textContent ?? '' })
+        return
+      }
+      if (card) return
+    }
+    if (editor.isOpen()) return
     const frame = event.target.closest('.photo-frame')
     const img = frame?.querySelector('img')
     if (!frame || !img?.src) return
@@ -277,6 +376,13 @@ export function mountPresentation(page: PageModel) {
   prev.addEventListener('click', () => go(-1))
   next.addEventListener('click', () => go(1))
   overviewButton.addEventListener('click', toggleOverview)
+  editButton.addEventListener('click', () => {
+    if (editing()) {
+      leaveEditing()
+      return
+    }
+    enterEditing()
+  })
   closeButton.addEventListener('click', close)
 
   const enqueue = (translator: NonNullable<Awaited<ReturnType<typeof beginTranslation>>>) => {
@@ -292,9 +398,9 @@ export function mountPresentation(page: PageModel) {
       const found = windowTexts.indexOf(text)
       const priority = found === -1 ? 0 : 1000 - found
       void translator.translate(text, priority).then((translated) => {
-        applyText(bindings, text, translated)
         left -= 1
         if (left <= 0) status.textContent = ''
+        applyArrived(text, translated)
       })
     }
     translator.prioritize(windowTexts)
@@ -328,6 +434,7 @@ export function mountPresentation(page: PageModel) {
       launch.textContent = label
       status.textContent = label
     })
+    translatorPromise = pending
     void pending.then((translator) => {
       stopStall()
       awaitingTranslator = false
