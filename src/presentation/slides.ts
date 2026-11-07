@@ -8,7 +8,8 @@ import { cachedTranslation, isCopyHidden } from '../translate'
 import { FACT_ICONS, photoFrame } from './dom'
 import { photoShow } from './slideshow'
 
-const MATERIAL_HEADING = /^material$/i
+const MATERIAL_HEADING = /^materials?\b/i
+const MATERIAL_TITLE = 'Material'
 
 interface SlideModel {
   kind: 'cover' | 'step' | 'section' | 'material' | 'end' | 'related'
@@ -64,7 +65,7 @@ function materialSlide(page: PageModel): SlideModel | null {
   if (!body.length && !images.length) return null
   return {
     kind: 'material',
-    title: material.heading,
+    title: MATERIAL_TITLE,
     body,
     images,
     facts: [],

@@ -129,10 +129,24 @@ describe('material slide', () => {
     expect(step?.querySelector('.step-seal')?.textContent).toBe('1')
   })
 
-  it('ignores a longer material heading and pages without steps', () => {
+  it('shortens a longer material heading and keeps pages without steps', () => {
     const named = renderSlides(instruction('Material for Origami Swan'))
-    expect(named.rendered[1]?.root.querySelector('h1')).toBeNull()
-    expect(named.rendered[1]?.root.querySelector('.step-seal')?.textContent).toBe('1')
+    const material = named.rendered[1]?.root
+    expect(material?.querySelector('h1')?.textContent).toBe('Material')
+    expect(material?.querySelector('h1')?.dataset.source).toBe('Material')
+    expect(named.bindings.has('Material for Origami Swan')).toBe(false)
+    applyText(named.bindings, 'Material', 'материал')
+    expect(material?.querySelector('h1')?.textContent).toBe('Материал')
+    expect([...material?.querySelectorAll('p') ?? []].map(node => node.textContent)).toEqual([
+      'Use duo paper.',
+      '15 cm',
+    ])
+    expect([...material?.querySelectorAll('img') ?? []].map(node => node.getAttribute('src'))).toEqual([
+      paper.url,
+      hero.url,
+      detail.url,
+    ])
+    expect(named.rendered[2]?.root.querySelector('.step-seal')?.textContent).toBe('1')
 
     const article = renderSlides({ ...instruction('Material'), steps: [] })
     const headings = article.rendered.map(slide => slide.root.querySelector('h1')?.textContent)
