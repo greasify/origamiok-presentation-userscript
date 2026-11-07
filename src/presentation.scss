@@ -673,6 +673,7 @@ a {
 .overlay.is-fullscreen .bar:hover,
 .overlay.is-fullscreen .bar:focus-within,
 .overlay.is-fullscreen:has(.overview:not([hidden])) .bar,
+.overlay.is-fullscreen:has(.dictionary:not([hidden])) .bar,
 .overlay.is-fullscreen.is-editing .bar {
   transform: none;
 
@@ -1223,6 +1224,235 @@ a {
   flex: 1;
   color: var(--muted);
   font-size: 15px;
+}
+
+.dictionary {
+  display: flex;
+  position: absolute;
+  flex-direction: column;
+  z-index: 4;
+  inset: 0;
+  bottom: calc(var(--control) + 20px);
+  gap: 16px;
+  background: var(--paper);
+  padding: 28px 32px 20px;
+  overflow: hidden;
+  pointer-events: auto;
+
+  &[hidden] {
+    display: none;
+  }
+}
+
+.overlay.is-fullscreen .dictionary {
+  bottom: 0;
+}
+
+.overlay.is-fullscreen:has(.dictionary:not([hidden])) .dictionary {
+  bottom: calc(var(--control) + 20px);
+}
+
+.dictionary-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 12px 16px;
+}
+
+.dictionary-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.dictionary-title {
+  margin: 0;
+  color: var(--ink);
+  font-weight: 600;
+  font-size: 28px;
+  line-height: 1.1;
+  font-family: var(--display);
+  letter-spacing: -0.03em;
+}
+
+.dictionary-count {
+  margin: 0;
+  min-height: 1.2em;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.dictionary-tools {
+  display: flex;
+  grid-column: 1 / -1;
+  gap: 8px;
+  min-width: 0;
+}
+
+.dictionary-search {
+  flex: 1;
+  border: 1px solid var(--muted);
+  background: #fffaf3;
+  padding: 8px 12px;
+  width: 100%;
+  min-width: 0;
+  height: var(--control);
+  color: var(--ink);
+  font: inherit;
+
+  &:focus-visible {
+    outline: 2px solid var(--ink);
+    outline-offset: 2px;
+  }
+}
+
+.dictionary-hidden {
+  flex: none;
+  cursor: pointer;
+  border: 1px solid var(--muted);
+  background: #fffaf3;
+  padding: 0 12px;
+  height: var(--control);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 600;
+
+  &[aria-pressed='true'] {
+    border-color: var(--seal);
+    background: var(--seal);
+    color: #fffaf3;
+  }
+
+  &:hover:not([aria-pressed='true']) {
+    background: rgb(28 25 21 / 8%);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--ink);
+    outline-offset: 2px;
+  }
+}
+
+.dictionary-empty {
+  margin: 0;
+  color: var(--muted);
+
+  &[hidden] {
+    display: none;
+  }
+}
+
+.dictionary-list {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  overflow: auto;
+}
+
+.dictionary-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border: 1.5px dashed var(--seal);
+  background: #fffaf3;
+  padding: 12px 14px;
+
+  &[hidden] {
+    display: none;
+  }
+}
+
+.dictionary-source-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.dictionary-source {
+  flex: 1;
+  margin: 0;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.dictionary-flag {
+  flex: none;
+  color: var(--seal);
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.dictionary-field {
+  border: 1px solid var(--muted);
+  background: #fffaf3;
+  padding: 10px 12px;
+  width: 100%;
+  min-height: 64px;
+  resize: vertical;
+  color: var(--ink);
+  font: inherit;
+  line-height: 1.35;
+
+  &:focus-visible {
+    outline: 2px solid var(--ink);
+    outline-offset: 2px;
+  }
+}
+
+.dictionary-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.dictionary-delete,
+.dictionary-reset,
+.dictionary-save {
+  cursor: pointer;
+  border: 0;
+  background: transparent;
+  padding: 0 12px;
+  height: var(--control);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 600;
+
+  &:hover:not(:disabled) {
+    background: rgb(28 25 21 / 8%);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--ink);
+    outline-offset: 3px;
+  }
+
+  &:disabled {
+    opacity: 0.35;
+    cursor: default;
+  }
+}
+
+.dictionary-save {
+  box-shadow: var(--stamp);
+  background: var(--seal);
+  color: #fffaf3;
+
+  &:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--seal) 82%, black);
+  }
+
+  &:disabled {
+    box-shadow: none;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

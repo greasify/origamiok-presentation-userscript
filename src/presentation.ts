@@ -1,2 +1,1 @@
-export { unmountPresentation } from './presentation/host'
-export { mountPresentation } from './presentation/mount'
+export { mountPresentation, unmountPresentation } from './presentation/mount'

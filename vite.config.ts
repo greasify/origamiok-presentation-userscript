@@ -26,9 +26,7 @@ export default defineConfig((config) => {
             'https://origamiok.com/*',
             'https://www.origamiok.com/*',
           ],
-          'grant': 'none',
           'run-at': 'document-idle',
-          'inject-into': 'page',
           'noframes': true,
         },
         server: {

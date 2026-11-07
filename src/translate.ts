@@ -1,3 +1,11 @@
+import {
+  readDictionary,
+  readHidden,
+  subscribeStore,
+  writeDictionary,
+  writeHidden,
+} from './storage'
+
 export interface TranslationSession {
   translate: (text: string, priority?: number) => Promise<string>
   prioritize: (texts: readonly string[]) => void
@@ -40,12 +48,13 @@ interface Job {
 
 const SOURCE = 'en'
 const TARGET = 'ru'
-const STORE_KEY = 'origami-presentation:v1:en:ru'
-const HIDDEN_KEY = 'origami-presentation:v1:hidden'
 
 const memory = new Map<string, string>()
 const pending = new Map<string, Job>()
 const revision = new Map<string, number>()
+const explicit = new Map<string, string | null>()
+const filled = new Set<string>()
+const watchers = new Set<() => void>()
 let dictionary: Record<string, string> | null = null
 let hidden: Set<string> | null = null
 let active = 0
@@ -54,36 +63,71 @@ let engine: TranslatorEngine | null = null
 let sessionPromise: Promise<TranslationSession | null> | null = null
 let progressListener: (loaded: number) => void = () => {}
 
-function persistDictionary() {
-  if (!dictionary) return
-  try {
-    localStorage.setItem(STORE_KEY, JSON.stringify(dictionary))
-  } catch {
-    // Storage can be full or blocked. The memory map still covers this visit.
+function readStored() {
+  return readDictionary()
+}
+
+function remember(store: Record<string, string>) {
+  dictionary = store
+  for (const key of memory.keys()) {
+    if (!store[key]) memory.delete(key)
+  }
+  for (const [key, value] of Object.entries(store)) memory.set(key, value)
+  for (const key of filled) {
+    if (!store[key]) filled.delete(key)
   }
 }
 
-function loadDictionary() {
-  if (dictionary) return dictionary
-  const store: Record<string, string> = {}
-  try {
-    const parsed = JSON.parse(localStorage.getItem(STORE_KEY) ?? '') as unknown
-    if (parsed && typeof parsed === 'object') {
-      for (const [src, out] of Object.entries(parsed)) {
-        if (typeof out === 'string' && out.trim()) store[src] = out
-      }
-    }
-  } catch {
-    // A broken record is replaced on the next successful write.
+function persistDictionary() {
+  if (!dictionary) return
+  const fresh = readStored()
+  const merged: Record<string, string> = { ...fresh }
+  for (const key of filled) {
+    const value = dictionary[key]
+    if (value && !fresh[key]) merged[key] = value
   }
-  dictionary = store
-  return store
+  for (const [key, value] of explicit) {
+    if (value == null) delete merged[key]
+    else merged[key] = value
+  }
+  writeDictionary(merged)
+  remember(merged)
+}
+
+function loadDictionary() {
+  if (!dictionary) dictionary = {}
+  const fresh = readStored()
+  for (const [key, value] of Object.entries(fresh)) {
+    if (!explicit.has(key)) dictionary[key] = value
+  }
+  for (const [key, value] of explicit) {
+    if (value == null) delete dictionary[key]
+    else dictionary[key] = value
+  }
+  for (const key of Object.keys(dictionary)) {
+    if (fresh[key] || explicit.has(key) || filled.has(key)) continue
+    delete dictionary[key]
+    memory.delete(key)
+  }
+  return dictionary
+}
+
+export function listTranslations() {
+  const pairs: Array<{ source: string, value: string }> = []
+  for (const [source, value] of Object.entries(loadDictionary())) {
+    const translated = value.trim()
+    if (!source.trim() || !translated) continue
+    pairs.push({ source, value: translated })
+  }
+  pairs.sort((left, right) => left.source.localeCompare(right.source, 'en', { sensitivity: 'base' }))
+  return pairs
 }
 
 export function cachedTranslation(text: string) {
   const trimmed = text.trim()
   if (!trimmed) return null
-  const hit = memory.get(trimmed) ?? loadDictionary()[trimmed]
+  if (explicit.get(trimmed) === null) return null
+  const hit = loadDictionary()[trimmed]
   if (!hit) return null
   memory.set(trimmed, hit)
   return hit
@@ -97,10 +141,15 @@ function bump(text: string) {
   revision.set(text, rev(text) + 1)
 }
 
-function writeCache(text: string, translated: string) {
-  memory.set(text, translated)
+function fillTranslation(text: string, translated: string) {
+  if (explicit.get(text) === null) explicit.delete(text)
+  const existing = cachedTranslation(text)
+  if (existing) return existing
+  filled.add(text)
   loadDictionary()[text] = translated
+  memory.set(text, translated)
   persistDictionary()
+  return translated
 }
 
 export function saveTranslation(text: string, translated: string) {
@@ -108,7 +157,11 @@ export function saveTranslation(text: string, translated: string) {
   const value = translated.trim()
   if (!source || !value) return
   bump(source)
-  writeCache(source, value)
+  explicit.set(source, value)
+  filled.delete(source)
+  loadDictionary()[source] = value
+  memory.set(source, value)
+  persistDictionary()
   const job = pending.get(source)
   if (!job) return
   pending.delete(source)
@@ -117,29 +170,17 @@ export function saveTranslation(text: string, translated: string) {
 
 function loadHidden() {
   if (hidden) return hidden
-  const store = new Set<string>()
-  try {
-    const parsed = JSON.parse(localStorage.getItem(HIDDEN_KEY) ?? '') as unknown
-    if (Array.isArray(parsed)) {
-      for (const item of parsed) {
-        if (typeof item === 'string' && item.trim()) store.add(item.trim())
-      }
-    }
-  } catch {
-    // A broken record is replaced on the next successful write.
-  }
-  hidden = store
-  return store
+  hidden = new Set(readHidden())
+  return hidden
 }
 
 function persistHidden() {
   if (!hidden) return
-  try {
-    if (hidden.size === 0) localStorage.removeItem(HIDDEN_KEY)
-    else localStorage.setItem(HIDDEN_KEY, JSON.stringify([...hidden]))
-  } catch {
-    // Storage can be full or blocked. The memory set still covers this visit.
-  }
+  writeHidden([...hidden])
+}
+
+export function listHidden() {
+  return [...loadHidden()].sort((left, right) => left.localeCompare(right, 'en', { sensitivity: 'base' }))
 }
 
 export function isCopyHidden(text: string) {
@@ -170,15 +211,20 @@ export function invalidateTranslation(text: string) {
   if (!source) return
   showCopy(source)
   bump(source)
+  explicit.set(source, null)
+  filled.delete(source)
   memory.delete(source)
-  const store = loadDictionary()
-  if (!(source in store)) return
-  delete store[source]
+  delete loadDictionary()[source]
   persistDictionary()
 }
 
+function pageGlobal() {
+  if (typeof unsafeWindow === 'undefined') return globalThis
+  return unsafeWindow
+}
+
 function readApi(): TranslatorApi | null {
-  const candidate = (globalThis as { Translator?: TranslatorApi }).Translator
+  const candidate = (pageGlobal() as { Translator?: TranslatorApi }).Translator
   if (!candidate || typeof candidate.create !== 'function') return null
   return candidate
 }
@@ -204,16 +250,26 @@ function pump() {
   if (!best) return
   const job = best
   pending.delete(job.text)
+  const stored = cachedTranslation(job.text)
+  if (stored) {
+    settle(job, stored)
+    pump()
+    return
+  }
   active = 1
   const stamp = rev(job.text)
   engine.translate(job.text).then((out) => {
     const clean = typeof out === 'string' && out.trim() ? out.trim() : job.text
+    const kept = cachedTranslation(job.text)
     if (rev(job.text) !== stamp) {
-      settle(job, cachedTranslation(job.text) ?? clean)
+      settle(job, kept ?? job.text)
       return
     }
-    writeCache(job.text, clean)
-    settle(job, clean)
+    if (kept) {
+      settle(job, kept)
+      return
+    }
+    settle(job, fillTranslation(job.text, clean))
   }).catch(() => {
     settle(job, cachedTranslation(job.text) ?? job.text)
   }).finally(() => {
@@ -308,3 +364,42 @@ export function beginTranslation(onProgress: (loaded: number) => void) {
 
   return sessionPromise
 }
+
+function notifyWatchers() {
+  for (const listener of watchers) listener()
+}
+
+export function watchTranslations(listener: () => void) {
+  watchers.add(listener)
+  return () => {
+    watchers.delete(listener)
+  }
+}
+
+function adoptDictionary(incoming: Record<string, string>) {
+  const previous = dictionary ?? {}
+  const affected = new Set<string>()
+  for (const key of new Set([...Object.keys(previous), ...Object.keys(incoming)])) {
+    if (previous[key] !== incoming[key]) affected.add(key)
+  }
+  for (const key of affected) {
+    bump(key)
+    explicit.delete(key)
+    filled.delete(key)
+    const job = pending.get(key)
+    if (!job) continue
+    pending.delete(key)
+    settle(job, incoming[key] ?? key)
+  }
+  remember({ ...incoming })
+}
+
+function adoptHidden(values: readonly string[]) {
+  hidden = new Set(values)
+}
+
+subscribeStore((event) => {
+  if (event.kind === 'dictionary') adoptDictionary(event.value)
+  else adoptHidden(event.value)
+  notifyWatchers()
+})

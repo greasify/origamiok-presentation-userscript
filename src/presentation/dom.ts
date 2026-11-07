@@ -26,6 +26,7 @@ export const EXIT_ICON = strokeIcon('M9 4H5v16h4M10 12h10M16 8l4 4-4 4')
 export const PREV_ICON = strokeIcon('M14 6 8 12l6 6')
 export const NEXT_ICON = strokeIcon('M10 6l6 6-6 6')
 export const OVERVIEW_ICON = `<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="currentColor"><rect x="2.5" y="2.5" width="5" height="5" rx="1.4"/><rect x="9.5" y="2.5" width="5" height="5" rx="1.4"/><rect x="16.5" y="2.5" width="5" height="5" rx="1.4"/><rect x="2.5" y="9.5" width="5" height="5" rx="1.4"/><rect x="9.5" y="9.5" width="5" height="5" rx="1.4"/><rect x="16.5" y="9.5" width="5" height="5" rx="1.4"/><rect x="2.5" y="16.5" width="5" height="5" rx="1.4"/><rect x="9.5" y="16.5" width="5" height="5" rx="1.4"/><rect x="16.5" y="16.5" width="5" height="5" rx="1.4"/></svg>`
+export const DICTIONARY_ICON = strokeIcon('M4 5.5h6.5A2.5 2.5 0 0 1 13 8v11H6.5A2.5 2.5 0 0 0 4 16.5zM20 5.5h-6.5A2.5 2.5 0 0 0 11 8v11h6.5a2.5 2.5 0 0 1 2.5-2.5z')
 export const EDIT_ICON = strokeIcon('M4 20l4.5-1.2L19 8.3 15.7 5 5.2 15.5 4 20zM14.5 6.2l3.3 3.3')
 export const MAGNIFY_ICON = strokeIcon('M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM21 21l-4.3-4.3')
 export const PHOTO_ICON = strokeIcon('M4 5h16v14H4zM9 9.2a1.2 1.2 0 1 1-2.4 0 1.2 1.2 0 0 1 2.4 0M4 16l4.5-4 2.8 2.6L15 10.5 20 16')

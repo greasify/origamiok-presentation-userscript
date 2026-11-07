@@ -11,12 +11,18 @@ import {
   cachedTranslation,
   hideCopy,
   invalidateTranslation,
+  isCopyHidden,
+  listHidden,
+  listTranslations,
   saveTranslation,
   showCopy,
   translatorAvailability,
+  watchTranslations,
 } from '../translate'
+import { createDictionary } from './dictionary'
 import {
   CREASE,
+  DICTIONARY_ICON,
   EDIT_ICON,
   EXIT_ICON,
   FONT_HREF,
@@ -39,12 +45,20 @@ import {
   releaseOverflow,
   unbindKey,
   unlockEscape,
-  unmountPresentation,
+  unmountPresentation as unmountHost,
 } from './host'
 import { createLightbox } from './lightbox'
 import { createOverview, slideMarkup } from './overview'
 import { applyHidden, applyText, renderSlides } from './slides'
 import { attachStage, presenterHref } from './sync'
+
+let stopWatch: (() => void) | null = null
+
+export function unmountPresentation() {
+  stopWatch?.()
+  stopWatch = null
+  unmountHost()
+}
 
 export function mountPresentation(page: PageModel) {
   unmountPresentation()
@@ -97,11 +111,14 @@ export function mountPresentation(page: PageModel) {
   overviewButton.setAttribute('aria-pressed', 'false')
   const editButton = sealButton('', 'Править текст', EDIT_ICON)
   editButton.setAttribute('aria-pressed', 'false')
+  const dictionaryButton = sealButton('', 'Словарь', DICTIONARY_ICON)
+  dictionaryButton.setAttribute('aria-expanded', 'false')
+  dictionaryButton.setAttribute('aria-pressed', 'false')
   const status = el('span', { className: 'status' })
   const closeButton = sealButton('', 'Закрыть', EXIT_ICON)
   status.setAttribute('aria-live', 'polite')
   pager.append(prev, counter, next)
-  bar.append(pager, overviewButton, editButton, closeButton, status)
+  bar.append(pager, overviewButton, editButton, dictionaryButton, closeButton, status)
 
   const photo = createLightbox(overlay, unlockEscape)
   let publish = () => {}
@@ -134,12 +151,13 @@ export function mountPresentation(page: PageModel) {
   let editor: EditorController
 
   const applyArrived = (source: string, translated: string) => {
+    const next = cachedTranslation(source) ?? translated
     if (savedNow.has(source)) return
     if (editor.editingSource() === source) {
-      heldTranslation.set(source, translated)
+      heldTranslation.set(source, next)
       return
     }
-    rememberText(source, translated)
+    rememberText(source, next)
     schedule()
   }
 
@@ -170,13 +188,24 @@ export function mountPresentation(page: PageModel) {
     applyHidden(bindings, source, false)
     rememberText(source, source)
     schedule()
-    if (!translatorPromise) return
-    translatorPromise.then((translator) => {
-      if (!translator) return
+    if (!translatorPromise) return Promise.resolve(null)
+    return translatorPromise.then((translator) => {
+      if (!translator) return null
       return translator.translate(source, 20_000).then((translated) => {
         applyArrived(source, translated)
+        return translated
       })
     })
+  }
+
+  const forgetTranslation = (source: string) => {
+    if (bindings.has(source)) {
+      resetTranslation(source)
+      return
+    }
+    savedNow.delete(source)
+    heldTranslation.delete(source)
+    invalidateTranslation(source)
   }
 
   editor = createEditor({
@@ -189,6 +218,33 @@ export function mountPresentation(page: PageModel) {
       if (savedNow.has(source) || !translated) return
       rememberText(source, translated)
     },
+  })
+
+  const dictionary = createDictionary({
+    load: listTranslations,
+    hidden: listHidden,
+    onSave: paintSaved,
+    onDelete: forgetTranslation,
+    onReset: resetTranslation,
+    onClose: () => {
+      dictionaryButton.setAttribute('aria-expanded', 'false')
+      dictionaryButton.setAttribute('aria-pressed', 'false')
+      settleCursor()
+    },
+  })
+
+  stopWatch = watchTranslations(() => {
+    for (const source of bindings.keys()) {
+      applyHidden(bindings, source, isCopyHidden(source))
+      const translated = cachedTranslation(source) ?? source
+      if (editor.editingSource() === source) {
+        heldTranslation.set(source, translated)
+        continue
+      }
+      rememberText(source, translated)
+    }
+    dictionary.sync()
+    schedule()
   })
 
   overlay.append(field, viewport, bar, editor.root, photo.root)
@@ -243,6 +299,7 @@ export function mountPresentation(page: PageModel) {
     settleCursor()
   })
   overlay.insertBefore(overview.root, photo.root)
+  overlay.insertBefore(dictionary.root, photo.root)
 
   let onKey: (event: KeyboardEvent) => void = () => {}
   let suppressFullscreenExit = false
@@ -256,7 +313,7 @@ export function mountPresentation(page: PageModel) {
 
   const editing = () => overlay.classList.contains('is-editing')
 
-  const cursorBusy = () => overview.isOpen() || editing() || photo.isOpen()
+  const cursorBusy = () => overview.isOpen() || dictionary.isOpen() || editing() || photo.isOpen()
 
   settleCursor = (reveal = false) => {
     window.clearTimeout(cursorTimer)
@@ -302,6 +359,7 @@ export function mountPresentation(page: PageModel) {
   const enterEditing = () => {
     photo.close()
     overview.close()
+    dictionary.close()
     overlay.classList.add('is-editing')
     editButton.setAttribute('aria-pressed', 'true')
     settleCursor()
@@ -311,6 +369,7 @@ export function mountPresentation(page: PageModel) {
     revealCursor()
     photo.close()
     overview.close()
+    dictionary.close()
     leaveEditing()
     unlockEscape()
     overlay.hidden = true
@@ -341,14 +400,30 @@ export function mountPresentation(page: PageModel) {
       return
     }
     leaveEditing()
+    dictionary.close()
     overviewButton.setAttribute('aria-expanded', 'true')
     overviewButton.setAttribute('aria-pressed', 'true')
     overview.open(index)
     settleCursor()
   }
 
+  const toggleDictionary = () => {
+    if (dictionary.isOpen()) {
+      dictionary.close()
+      return
+    }
+    leaveEditing()
+    overview.close()
+    photo.close()
+    dictionaryButton.setAttribute('aria-expanded', 'true')
+    dictionaryButton.setAttribute('aria-pressed', 'true')
+    dictionary.open()
+    settleCursor()
+  }
+
   onKey = (event: KeyboardEvent) => {
     if (editor.onKey(event)) return
+    if (dictionary.onKey(event)) return
     const key = event.key
     if (key === 'Escape') {
       event.preventDefault()
@@ -431,6 +506,7 @@ export function mountPresentation(page: PageModel) {
   }
 
   const openPhotos = (images: HTMLImageElement[], start: number, scope: ParentNode) => {
+    dictionary.close()
     const frames = scope instanceof Element && scope.classList.contains('photo-show')
       ? scope
       : scope.querySelector('.photo-show')
@@ -467,6 +543,7 @@ export function mountPresentation(page: PageModel) {
     if (command.type === 'show') {
       leaveEditing()
       overview.close()
+      dictionary.close()
       photo.close()
       show(command.index)
       return
@@ -541,6 +618,7 @@ export function mountPresentation(page: PageModel) {
   prev.addEventListener('click', () => go(-1))
   next.addEventListener('click', () => go(1))
   overviewButton.addEventListener('click', toggleOverview)
+  dictionaryButton.addEventListener('click', toggleDictionary)
   editButton.addEventListener('click', () => {
     if (editing()) {
       leaveEditing()
