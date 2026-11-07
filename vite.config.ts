@@ -2,6 +2,7 @@ import { defineConfig } from 'vite'
 import userscript from 'vite-userscript-plugin'
 import pkg from './package.json' with { type: 'json' }
 import { presenterHub } from './src/presenter/plugin.ts'
+import { studioHub } from './src/studio/plugin.ts'
 
 export default defineConfig((config) => {
   return {
@@ -12,6 +13,7 @@ export default defineConfig((config) => {
     },
     plugins: [
       presenterHub(),
+      studioHub(),
       userscript({
         entry: 'src/index.ts',
         fileName: 'origamiok-presentation',

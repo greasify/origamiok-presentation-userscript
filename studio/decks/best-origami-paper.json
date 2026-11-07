@@ -1,0 +1,317 @@
+{
+  "id": "best-origami-paper",
+  "title": "Лучшая бумага",
+  "slides": [
+    {
+      "id": "cover",
+      "layout": "cover",
+      "title": "Типы бумаги",
+      "body": [
+        "Что взять на первое занятие"
+      ],
+      "imageSide": "right",
+      "images": [
+        {
+          "src": "/studio/sources/best-origami-paper/images/01-Best-Origami-Paper-Reviews-Buying-Guide.webp",
+          "alt": "Гиды и пачки бумаги для оригами"
+        }
+      ],
+      "cards": [],
+      "href": "",
+      "youtubeId": ""
+    },
+    {
+      "id": "gsm",
+      "layout": "split",
+      "title": "50–60 г/м²",
+      "body": [
+        "Для складок нужен тонкий лист: слои не раздуваются и бумага не рвётся.",
+        "Газета тоньше. Принтерный лист — 70–100 г/м². Визитка уже слишком толстая."
+      ],
+      "imageSide": "right",
+      "images": [
+        {
+          "src": "/studio/sources/best-origami-paper/images/02-Standard-A4Letter-Size-Paper.webp",
+          "alt": "Стопка офисной бумаги A4"
+        }
+      ],
+      "cards": [],
+      "href": "",
+      "youtubeId": ""
+    },
+    {
+      "id": "home-sheets",
+      "layout": "cards",
+      "title": "Четыре листа с полки",
+      "body": [],
+      "imageSide": "right",
+      "images": [],
+      "cards": [
+        {
+          "title": "A4",
+          "body": "Легко найти. Годится для практики и самолётика, не для журавля со многими слоями.",
+          "image": {
+            "src": "/studio/sources/best-origami-paper/images/02-Standard-A4Letter-Size-Paper.webp",
+            "alt": "Офисный лист"
+          }
+        },
+        {
+          "title": "Тетрадь",
+          "body": "Тоньше принтерной. Хватит на простого журавлика.",
+          "image": {
+            "src": "/studio/sources/best-origami-paper/images/04-Notebook-Paper.webp",
+            "alt": "Тетрадный лист"
+          }
+        },
+        {
+          "title": "Газета",
+          "body": "Большой лист, из него выходит любой квадрат. Мнётся, если спешить.",
+          "image": {
+            "src": "/studio/sources/best-origami-paper/images/06-Newspaper.webp",
+            "alt": "Газетный лист"
+          }
+        },
+        {
+          "title": "Журнал",
+          "body": "Сразу цвет и узор. Страницы разной толщины, глянец скользит.",
+          "image": {
+            "src": "/studio/sources/best-origami-paper/images/08-Magazine-Pages.webp",
+            "alt": "Журнальная страница"
+          }
+        }
+      ],
+      "href": "",
+      "youtubeId": ""
+    },
+    {
+      "id": "scraps",
+      "layout": "cards",
+      "title": "Мелочи, которые тоже складывают",
+      "body": [],
+      "imageSide": "right",
+      "images": [],
+      "cards": [
+        {
+          "title": "Стикер",
+          "body": "Уже квадрат и много цветов. Хватает на звёздочку, не на большую модель.",
+          "image": {
+            "src": "/studio/sources/best-origami-paper/images/10-Sticky-Notes.webp",
+            "alt": "Стопка стикеров"
+          }
+        },
+        {
+          "title": "Фантик",
+          "body": "Блестит и всегда с собой. Совсем маленький.",
+          "image": {
+            "src": "/studio/sources/best-origami-paper/images/12-Gum-Wrappers.webp",
+            "alt": "Фантики"
+          }
+        },
+        {
+          "title": "Купюра",
+          "body": "Это хлопок со льном, не бумага. Прямоугольник, у него свои схемы.",
+          "image": {
+            "src": "/studio/sources/best-origami-paper/images/14-Dollar-Bill.webp",
+            "alt": "Купюра"
+          }
+        }
+      ],
+      "href": "",
+      "youtubeId": ""
+    },
+    {
+      "id": "kami",
+      "layout": "split",
+      "title": "Ками",
+      "body": [
+        "Одна сторона цветная, другая белая, около 60 г/м².",
+        "С неё начинают: белая сторона становится животом, клювом, ухом."
+      ],
+      "imageSide": "right",
+      "images": [
+        {
+          "src": "/studio/sources/best-origami-paper/images/16-Kami-Paper-.webp",
+          "alt": "Пачка бумаги ками"
+        }
+      ],
+      "cards": [],
+      "href": "",
+      "youtubeId": ""
+    },
+    {
+      "id": "two-sides",
+      "layout": "cards",
+      "title": "Когда сторон две",
+      "body": [],
+      "imageSide": "right",
+      "images": [],
+      "cards": [
+        {
+          "title": "Тант",
+          "body": "Обе стороны одного цвета, лист чуть плотнее. Изнанка не вспыхивает белым.",
+          "image": {
+            "src": "/studio/sources/best-origami-paper/images/23-Tant-Paper.webp",
+            "alt": "Бумага тант"
+          }
+        },
+        {
+          "title": "Двусторонняя",
+          "body": "Два цвета снаружи. Нужна сердцу и модулям. На первый кружок не обязательна.",
+          "image": null
+        }
+      ],
+      "href": "",
+      "youtubeId": ""
+    },
+    {
+      "id": "momigami",
+      "layout": "split",
+      "title": "Момигами",
+      "body": [
+        "Лист мнут, и он становится мягким, как ткань.",
+        "Держит лепесток и не ломается на остром сгибе."
+      ],
+      "imageSide": "right",
+      "images": [
+        {
+          "src": "/studio/sources/best-origami-paper/images/26-Origami-Rose-Kawasaki-Rose-by-Momigami-Paper.webp",
+          "alt": "Роза из момигами"
+        }
+      ],
+      "cards": [],
+      "href": "",
+      "youtubeId": ""
+    },
+    {
+      "id": "japanese",
+      "layout": "cards",
+      "title": "Японская бумага",
+      "body": [],
+      "imageSide": "right",
+      "images": [],
+      "cards": [
+        {
+          "title": "Васи и чиёгами",
+          "body": "Тонкие, часто с узором. Журавль из такой бумаги уже подарок.",
+          "image": {
+            "src": "/studio/sources/best-origami-paper/images/31-Washi-Chiyogami-and-Yuzen-Japanese-Traditional-Papers.webp",
+            "alt": "Васи, чиёгами и юдзен"
+          }
+        },
+        {
+          "title": "Унрю",
+          "body": "В листе видны волокна. Простая модель выглядит дороже.",
+          "image": {
+            "src": "/studio/sources/best-origami-paper/images/35-Unryu-Paper.webp",
+            "alt": "Бумага унрю"
+          }
+        }
+      ],
+      "href": "",
+      "youtubeId": ""
+    },
+    {
+      "id": "foil",
+      "layout": "split",
+      "title": "Фольга",
+      "body": [
+        "Держит мелкий сгиб и блестит.",
+        "На первом занятии скользит. Возьмите её, когда долина и гора уже получаются."
+      ],
+      "imageSide": "right",
+      "images": [
+        {
+          "src": "/studio/sources/best-origami-paper/images/39-Origami-Crane-By-Foil-Paper.webp",
+          "alt": "Журавль из фольгированной бумаги"
+        }
+      ],
+      "cards": [],
+      "href": "",
+      "youtubeId": ""
+    },
+    {
+      "id": "decor",
+      "layout": "cards",
+      "title": "Крафт, обёртка, узор",
+      "body": [],
+      "imageSide": "right",
+      "images": [],
+      "cards": [
+        {
+          "title": "Крафт",
+          "body": "Плотный и тёплый. Хорош для простых зверей, не для десяти слоёв.",
+          "image": {
+            "src": "/studio/sources/best-origami-paper/images/45-Kraft-Paper.webp",
+            "alt": "Крафт"
+          }
+        },
+        {
+          "title": "Обёртка",
+          "body": "Праздничный рисунок. Проверьте толщину: часть рулонов слишком жёсткая.",
+          "image": {
+            "src": "/studio/sources/best-origami-paper/images/64-Origami-Christmas-Tree-3D-Version.webp",
+            "alt": "Ёлка из обёрточной бумаги"
+          }
+        },
+        {
+          "title": "С узором",
+          "body": "Даже простая складка выглядит готовой вещью.",
+          "image": {
+            "src": "/studio/sources/best-origami-paper/images/70-Origami-Rose-Box.webp",
+            "alt": "Коробка-роза из бумаги с узором"
+          }
+        }
+      ],
+      "href": "",
+      "youtubeId": ""
+    },
+    {
+      "id": "origamido",
+      "layout": "split",
+      "title": "Оригамидо",
+      "body": [
+        "Для долгих моделей берут тонкую прочную бумагу.",
+        "На кружке она не нужна: сначала ками и чистый сгиб."
+      ],
+      "imageSide": "right",
+      "images": [
+        {
+          "src": "/studio/sources/best-origami-paper/images/77-wilbur.webp",
+          "alt": "Сложная модель"
+        }
+      ],
+      "cards": [],
+      "href": "",
+      "youtubeId": ""
+    },
+    {
+      "id": "close",
+      "layout": "quote",
+      "title": "На кружок берите ками.",
+      "body": [
+        "Офисный лист годится, чтобы понять сгиб."
+      ],
+      "imageSide": "right",
+      "images": [
+        {
+          "src": "/studio/sources/best-origami-paper/images/16-Kami-Paper-.webp",
+          "alt": "Пачка бумаги ками"
+        }
+      ],
+      "cards": [],
+      "href": "",
+      "youtubeId": ""
+    },
+    {
+      "id": "end",
+      "layout": "end",
+      "title": "Типы бумаги",
+      "body": [],
+      "imageSide": "right",
+      "images": [],
+      "cards": [],
+      "href": "https://origamiok.com/best-origami-paper/",
+      "youtubeId": ""
+    }
+  ]
+}

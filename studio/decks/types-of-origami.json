@@ -1,0 +1,193 @@
+{
+  "id": "types-of-origami",
+  "title": "Виды оригами",
+  "slides": [
+    {
+      "id": "cover",
+      "layout": "cover",
+      "title": "Виды оригами",
+      "body": [
+        "От пяти минут до долгой скульптуры"
+      ],
+      "imageSide": "right",
+      "images": [
+        {
+          "src": "https://origamiok.com/wp-content/uploads/2025/06/Types-of-Origami-From-Easy-to-Complex.webp",
+          "alt": "Модели оригами от простых к сложным"
+        }
+      ],
+      "cards": [],
+      "href": "",
+      "youtubeId": ""
+    },
+    {
+      "id": "two-cuts",
+      "layout": "split",
+      "title": "Два среза",
+      "body": [
+        "Сначала смотрите, сколько времени и шагов. Потом — каким приёмом сложена модель.",
+        "Так проще выбрать схему, которая учит, а не останавливает."
+      ],
+      "imageSide": "right",
+      "images": [
+        {
+          "src": "/studio/sources/learn-to-origami/images/41-origami-crane-1.webp",
+          "alt": "Бумажный журавль"
+        }
+      ],
+      "cards": [],
+      "href": "",
+      "youtubeId": ""
+    },
+    {
+      "id": "levels",
+      "layout": "cards",
+      "title": "Сколько это займёт",
+      "body": [],
+      "imageSide": "right",
+      "images": [],
+      "cards": [
+        {
+          "title": "Легко",
+          "body": "5–15 минут, около 12–22 шагов. Долина, гора, простая обратная складка.",
+          "image": {
+            "src": "/studio/sources/learn-to-origami/images/42-easy-origami-boat.webp",
+            "alt": "Лодка"
+          }
+        },
+        {
+          "title": "Средне",
+          "body": "15–40 минут. Появляются лепесток, кроличье ухо, сплющивание.",
+          "image": {
+            "src": "/studio/sources/learn-to-origami/images/34-origami-brid-base-14.webp",
+            "alt": "Птичья база"
+          }
+        },
+        {
+          "title": "Сложно",
+          "body": "От 20 минут до часа и дольше. Ошибка в начале портит всю модель.",
+          "image": {
+            "src": "/studio/sources/best-origami-paper/images/60-Origami-Phoenix.webp",
+            "alt": "Феникс"
+          }
+        }
+      ],
+      "href": "",
+      "youtubeId": ""
+    },
+    {
+      "id": "traditional",
+      "layout": "split",
+      "title": "Традиционное",
+      "body": [
+        "Классические модели передавали без чертежа: один квадрат, только складки.",
+        "Журавль, коробочка, лодка. Ни ножниц, ни клея."
+      ],
+      "imageSide": "right",
+      "images": [
+        {
+          "src": "/studio/sources/learn-to-origami/images/41-origami-crane-1.webp",
+          "alt": "Журавль"
+        }
+      ],
+      "cards": [],
+      "href": "",
+      "youtubeId": ""
+    },
+    {
+      "id": "modular-wet",
+      "layout": "cards",
+      "title": "Модули и мокрая бумага",
+      "body": [],
+      "imageSide": "right",
+      "images": [],
+      "cards": [
+        {
+          "title": "Модульное",
+          "body": "Одинаковые детали вставляются друг в друга. Получается шар, куб, цветок.",
+          "image": {
+            "src": "/studio/sources/best-origami-paper/images/25-Origami-Kusudama-Flower-by-Momigami-Paper.webp",
+            "alt": "Кусудама"
+          }
+        },
+        {
+          "title": "Мокрое",
+          "body": "Акира Ёсидзава в 1950-х стал слегка смачивать лист. После высыхания фигура держит изгиб.",
+          "image": null
+        }
+      ],
+      "href": "",
+      "youtubeId": ""
+    },
+    {
+      "id": "kirigami",
+      "layout": "quote",
+      "title": "Киригами — это уже рез.",
+      "body": [
+        "«Киру» значит резать, «ками» — бумага. Складка остаётся, но лист больше не целый."
+      ],
+      "imageSide": "right",
+      "images": [],
+      "cards": [],
+      "href": "",
+      "youtubeId": ""
+    },
+    {
+      "id": "action",
+      "layout": "cards",
+      "title": "Оно двигается",
+      "body": [],
+      "imageSide": "right",
+      "images": [],
+      "cards": [
+        {
+          "title": "Лягушка",
+          "body": "Прыгает за счёт пружины в бумаге.",
+          "image": {
+            "src": "/studio/sources/learn-to-origami/images/43-How-to-Fold-an-Easy-Origami-Frog--E2-80-93-Jumping-Frog.webp",
+            "alt": "Прыгающая лягушка"
+          }
+        },
+        {
+          "title": "Самолёт",
+          "body": "Летит. Схема короткая, лист может быть офисным.",
+          "image": {
+            "src": "/studio/sources/learn-to-origami/images/44-origami-plane-2.webp",
+            "alt": "Самолёт"
+          }
+        }
+      ],
+      "href": "",
+      "youtubeId": ""
+    },
+    {
+      "id": "start",
+      "layout": "quote",
+      "title": "Начните с долины, горы и ками.",
+      "body": [
+        "Сложный приём подождёт, пока чистый сгиб не станет привычкой."
+      ],
+      "imageSide": "right",
+      "images": [
+        {
+          "src": "/studio/sources/best-origami-paper/images/16-Kami-Paper-.webp",
+          "alt": "Пачка бумаги ками"
+        }
+      ],
+      "cards": [],
+      "href": "",
+      "youtubeId": ""
+    },
+    {
+      "id": "end",
+      "layout": "end",
+      "title": "Виды оригами",
+      "body": [],
+      "imageSide": "right",
+      "images": [],
+      "cards": [],
+      "href": "https://origamiok.com/types-of-origami/",
+      "youtubeId": ""
+    }
+  ]
+}
