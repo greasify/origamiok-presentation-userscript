@@ -261,11 +261,14 @@ function renderSection(slide: SlideModel, sink: CopySink) {
   return root
 }
 
-function qrLink(href: string, label: string) {
+const PRESENTATION_LABEL = 'Презентация'
+
+function qrLink(href: string, label: string, kind: 'pictures' | 'video' | 'presentation') {
   const link = el('a', { className: 'qr-link' })
   link.href = href
   link.target = '_blank'
   link.rel = 'noreferrer'
+  link.dataset.qr = kind
   const mark = el('span', { className: 'qr-mark' })
   mark.innerHTML = renderSVG(href, {
     ecc: 'M',
@@ -285,9 +288,12 @@ function renderEnd(slide: SlideModel, sink: CopySink) {
   bind(title, slide.title, sink)
   root.append(title)
   const row = el('div', { className: 'qr-row' })
-  if (slide.href) row.append(qrLink(slide.href, 'С картинками'))
-  if (slide.youtubeId) row.append(qrLink(`https://www.youtube.com/watch?v=${slide.youtubeId}`, 'Видео'))
-  if (row.childElementCount) root.append(row)
+  if (slide.href) row.append(qrLink(slide.href, 'С картинками', 'pictures'))
+  if (slide.youtubeId) row.append(qrLink(`https://www.youtube.com/watch?v=${slide.youtubeId}`, 'Видео', 'video'))
+  const add = el('button', { className: 'qr-add' }, PRESENTATION_LABEL)
+  add.type = 'button'
+  row.append(add)
+  root.append(row)
   return root
 }
 
@@ -355,4 +361,22 @@ export function applyText(bindings: Map<string, Set<HTMLElement>>, source: strin
 
 export function applyHidden(bindings: Map<string, Set<HTMLElement>>, source: string, hidden: boolean) {
   bindings.get(source)?.forEach(node => node.classList.toggle('is-hidden', hidden))
+}
+
+export function applyEndLinks(root: HTMLElement, state: { presentation: string, hidden: readonly string[] }) {
+  root.querySelector('[data-qr="pictures"]')?.classList.toggle('is-hidden', state.hidden.includes('pictures'))
+  root.querySelector('[data-qr="video"]')?.classList.toggle('is-hidden', state.hidden.includes('video'))
+  const row = root.querySelector('.qr-row')
+  if (!row) return
+  const existing = row.querySelector<HTMLAnchorElement>('[data-qr="presentation"]')
+  if (!state.presentation) {
+    existing?.remove()
+    return
+  }
+  if (existing?.getAttribute('href') === state.presentation) return
+  existing?.remove()
+  const link = qrLink(state.presentation, PRESENTATION_LABEL, 'presentation')
+  const add = row.querySelector('.qr-add')
+  if (add) row.insertBefore(link, add)
+  else row.append(link)
 }

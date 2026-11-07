@@ -78,6 +78,9 @@ function thumbCss(css: string) {
   opacity: 0.45;
   pointer-events: auto;
 }
+:host(.is-editing) .qr-link.is-hidden {
+  display: flex;
+}
 `
 }
 

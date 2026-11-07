@@ -6,6 +6,7 @@ import { el } from '@zero-dependency/dom'
 import { renderSVG } from 'uqr'
 import presentationCss from '../presentation.scss?inline'
 import { canonicalPath, deckKey } from '../presenter/protocol'
+import { endHref, readEndLinks, subscribeStore, writeEndLinks } from '../storage'
 import {
   beginTranslation,
   cachedTranslation,
@@ -29,6 +30,7 @@ import {
   LAUNCH_LABEL,
   NEXT_ICON,
   OVERVIEW_ICON,
+  PDF_ICON,
   PRESENTER_ICON,
   PREV_ICON,
   sealButton,
@@ -49,7 +51,8 @@ import {
 } from './host'
 import { createLightbox } from './lightbox'
 import { createOverview, slideMarkup } from './overview'
-import { applyHidden, applyText, renderSlides } from './slides'
+import { printSlides } from './pdf'
+import { applyEndLinks, applyHidden, applyText, renderSlides } from './slides'
 import { attachStage, presenterHref } from './sync'
 
 let stopWatch: (() => void) | null = null
@@ -115,10 +118,25 @@ export function mountPresentation(page: PageModel) {
   dictionaryButton.setAttribute('aria-expanded', 'false')
   dictionaryButton.setAttribute('aria-pressed', 'false')
   const status = el('span', { className: 'status' })
+  const pdfStatus = 'Готовим PDF…'
+  const pdfButton = sealButton('', 'Скачать PDF', PDF_ICON)
+  pdfButton.addEventListener('click', () => {
+    if (pdfButton.disabled) return
+    const previous = status.textContent
+    pdfButton.disabled = true
+    status.textContent = pdfStatus
+    printSlides(
+      rendered.map(slide => slide.root),
+      `Origami ${page.modelName}`,
+    ).catch(() => {}).finally(() => {
+      pdfButton.disabled = false
+      if (status.textContent === pdfStatus) status.textContent = previous
+    })
+  })
   const closeButton = sealButton('', 'Закрыть', EXIT_ICON)
   status.setAttribute('aria-live', 'polite')
   pager.append(prev, counter, next)
-  bar.append(pager, overviewButton, editButton, dictionaryButton, closeButton, status)
+  bar.append(pager, overviewButton, editButton, dictionaryButton, pdfButton, closeButton, status)
 
   const photo = createLightbox(overlay, unlockEscape)
   let publish = () => {}
@@ -312,8 +330,9 @@ export function mountPresentation(page: PageModel) {
   }
 
   const editing = () => overlay.classList.contains('is-editing')
+  let linkOpen = () => false
 
-  const cursorBusy = () => overview.isOpen() || dictionary.isOpen() || editing() || photo.isOpen()
+  const cursorBusy = () => overview.isOpen() || dictionary.isOpen() || editing() || photo.isOpen() || linkOpen()
 
   settleCursor = (reveal = false) => {
     window.clearTimeout(cursorTimer)
@@ -349,7 +368,10 @@ export function mountPresentation(page: PageModel) {
     host.requestFullscreen().catch(() => {})
   }
 
+  let closeLinkEditor = () => {}
+
   const leaveEditing = () => {
+    closeLinkEditor()
     editor.close()
     overlay.classList.remove('is-editing')
     editButton.setAttribute('aria-pressed', 'false')
@@ -421,7 +443,10 @@ export function mountPresentation(page: PageModel) {
     settleCursor()
   }
 
+  let linkOnKey = (_event: KeyboardEvent) => false
+
   onKey = (event: KeyboardEvent) => {
+    if (linkOnKey(event)) return
     if (editor.onKey(event)) return
     if (dictionary.onKey(event)) return
     const key = event.key
@@ -589,14 +614,134 @@ export function mountPresentation(page: PageModel) {
     openPhotos(images, command.index, root)
   }
 
+  const endRoot = () => rendered.find(slide => slide.root.classList.contains('paper-end'))?.root ?? null
+  const paintEnd = () => {
+    const root = endRoot()
+    if (!root) return
+    applyEndLinks(root, readEndLinks(key))
+    markupCache = null
+    schedule()
+  }
+  paintEnd()
+  const stopEnd = subscribeStore((event) => {
+    if (event.kind !== 'end') return
+    paintEnd()
+  })
+  const stopTranslations = stopWatch
+  stopWatch = () => {
+    stopTranslations?.()
+    stopEnd()
+  }
+
+  const linkEditor = el('div', { className: 'copy-editor qr-editor' })
+  linkEditor.hidden = true
+  linkEditor.setAttribute('role', 'dialog')
+  linkEditor.setAttribute('aria-modal', 'true')
+  linkEditor.setAttribute('aria-label', 'Презентация')
+  const linkLabel = el('p', { className: 'copy-editor-source' })
+  linkLabel.textContent = 'Презентация'
+  const linkField = el('input', { className: 'qr-editor-field' })
+  linkField.type = 'url'
+  linkField.spellcheck = false
+  linkField.placeholder = 'https://'
+  const linkError = el('p', { className: 'qr-editor-error' })
+  linkError.hidden = true
+  linkError.textContent = 'Нужна ссылка http или https'
+  const linkActions = el('div', { className: 'copy-editor-actions' })
+  const linkRemove = el('button', { className: 'copy-editor-reset' }, 'Убрать')
+  linkRemove.type = 'button'
+  const linkCancel = el('button', { className: 'copy-editor-cancel' }, 'Отмена')
+  linkCancel.type = 'button'
+  const linkSave = el('button', { className: 'copy-editor-save' }, 'Сохранить')
+  linkSave.type = 'button'
+  linkActions.append(linkRemove, linkCancel, linkSave)
+  linkEditor.append(linkLabel, linkField, linkError, linkActions)
+  overlay.append(linkEditor)
+
+  const closeLink = () => {
+    linkEditor.hidden = true
+    linkField.value = ''
+    linkError.hidden = true
+  }
+  closeLinkEditor = closeLink
+  linkOpen = () => !linkEditor.hidden
+  const openLinkEditor = () => {
+    editor.close()
+    const current = readEndLinks(key).presentation
+    linkField.value = current
+    linkRemove.hidden = !current
+    linkError.hidden = true
+    linkEditor.hidden = false
+    linkField.focus()
+  }
+  const saveLink = () => {
+    const href = endHref(linkField.value)
+    if (!href) {
+      linkError.hidden = false
+      return
+    }
+    const links = readEndLinks(key)
+    writeEndLinks(key, { presentation: href, hidden: links.hidden })
+    closeLink()
+    paintEnd()
+  }
+  const removeLink = () => {
+    const links = readEndLinks(key)
+    writeEndLinks(key, { presentation: '', hidden: links.hidden })
+    closeLink()
+    paintEnd()
+  }
+  linkOnKey = (event) => {
+    if (linkEditor.hidden) return false
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      event.stopPropagation()
+      closeLink()
+      return true
+    }
+    if (event.key === 'Enter') {
+      event.preventDefault()
+      event.stopPropagation()
+      saveLink()
+      return true
+    }
+    return true
+  }
+  linkCancel.addEventListener('click', closeLink)
+  linkRemove.addEventListener('click', removeLink)
+  linkSave.addEventListener('click', saveLink)
+  linkField.addEventListener('input', () => {
+    linkError.hidden = true
+  })
+
   stage.addEventListener('click', (event) => {
     if (!(event.target instanceof Element)) return
     if (editing()) {
+      const qr = event.target.closest('.qr-link, .qr-add')
+      if (qr instanceof HTMLElement) {
+        event.preventDefault()
+        const kind = qr.dataset.qr
+        if (kind === 'pictures' || kind === 'video') {
+          closeLink()
+          const links = readEndLinks(key)
+          const hidden = links.hidden.includes(kind)
+            ? links.hidden.filter(item => item !== kind)
+            : [...links.hidden, kind]
+          writeEndLinks(key, { presentation: links.presentation, hidden })
+          paintEnd()
+          return
+        }
+        if (kind === 'presentation' || qr.classList.contains('qr-add')) {
+          openLinkEditor()
+          return
+        }
+      }
       const card = event.target.closest('.related-card')
       if (card) event.preventDefault()
       const copy = event.target.closest('.is-copy')
       if (copy instanceof HTMLElement && copy.dataset.source) {
         event.preventDefault()
+        closeLink()
         editor.open({
           source: copy.dataset.source,
           current: copy.textContent ?? '',
@@ -607,7 +752,7 @@ export function mountPresentation(page: PageModel) {
       }
       if (card) return
     }
-    if (editor.isOpen()) return
+    if (editor.isOpen() || linkOpen()) return
     const frame = event.target.closest('.photo-frame')
     const img = frame?.querySelector('img')
     if (!frame || !(img instanceof HTMLImageElement) || !img.src) return

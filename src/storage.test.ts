@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 const STORE_KEY = 'origami-presentation:v1:en:ru'
 const HIDDEN_KEY = 'origami-presentation:v1:hidden'
+const END_KEY = 'origami-presentation:v1:end'
 
 type GmListener = (...args: [string, unknown, unknown, boolean]) => void
 
@@ -76,6 +77,31 @@ describe('script storage', () => {
     gm.remote(HIDDEN_KEY, ['fold the corner', '  '])
     expect(seen).toEqual([['fold the corner']])
     expect(readHidden()).toEqual(['fold the corner'])
+  })
+
+  it('keeps a presentation link for one model and drops an empty record', async () => {
+    const { readEndLinks, writeEndLinks } = await loadStorage()
+    writeEndLinks('swan', { presentation: 'https://slides.example/swan', hidden: ['video', 'video'] })
+    expect(readEndLinks('swan')).toEqual({ presentation: 'https://slides.example/swan', hidden: ['video'] })
+    expect(readEndLinks('other')).toEqual({ presentation: '', hidden: [] })
+    writeEndLinks('swan', { presentation: 'javascript:alert(1)', hidden: ['pictures'] })
+    expect(readEndLinks('swan')).toEqual({ presentation: '', hidden: ['pictures'] })
+    writeEndLinks('swan', { presentation: '', hidden: [] })
+    expect(readEndLinks('swan')).toEqual({ presentation: '', hidden: [] })
+    expect(localStorage.getItem(END_KEY)).toBeNull()
+  })
+
+  it('reports a remote presentation link', async () => {
+    const gm = installGm()
+    const { readEndLinks, subscribeStore } = await loadStorage()
+    const seen: string[] = []
+    subscribeStore((event) => {
+      if (event.kind !== 'end') return
+      seen.push(event.value.swan?.presentation ?? '')
+    })
+    gm.remote(END_KEY, { swan: { presentation: 'https://ok.example/x', hidden: ['video', 'nope'] } })
+    expect(seen).toEqual(['https://ok.example/x'])
+    expect(readEndLinks('swan')).toEqual({ presentation: 'https://ok.example/x', hidden: ['video'] })
   })
 
   it('follows a storage event when GM is missing', async () => {

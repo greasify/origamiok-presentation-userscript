@@ -1,8 +1,17 @@
 const DICTIONARY_KEY = 'origami-presentation:v1:en:ru'
 const HIDDEN_KEY = 'origami-presentation:v1:hidden'
+const END_KEY = 'origami-presentation:v1:end'
 const missing = Symbol('missing')
 
 type DictionaryRecord = Record<string, string>
+type QrKind = 'pictures' | 'video'
+
+export interface EndLinks {
+  presentation: string
+  hidden: QrKind[]
+}
+
+type EndRecord = Record<string, EndLinks>
 
 export type StoreEvent = {
   kind: 'dictionary'
@@ -10,6 +19,9 @@ export type StoreEvent = {
 } | {
   kind: 'hidden'
   value: string[]
+} | {
+  kind: 'end'
+  value: EndRecord
 }
 
 type GmListener = (...args: [string, unknown, unknown, boolean]) => void
@@ -90,6 +102,45 @@ function hiddenFrom(value: unknown) {
   return list
 }
 
+export function endHref(value: string) {
+  try {
+    const url = new URL(value.trim())
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return ''
+    return url.href
+  } catch {
+    return ''
+  }
+}
+
+function qrHiddenFrom(value: unknown) {
+  if (!Array.isArray(value)) return []
+  const list: QrKind[] = []
+  for (const item of value) {
+    if ((item === 'pictures' || item === 'video') && !list.includes(item)) list.push(item)
+  }
+  return list
+}
+
+function linksFrom(value: unknown) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
+  const record = value as Record<string, unknown>
+  const presentation = typeof record.presentation === 'string' ? endHref(record.presentation) : ''
+  const hidden = qrHiddenFrom(record.hidden)
+  if (!presentation && hidden.length === 0) return null
+  return { presentation, hidden }
+}
+
+function endFrom(value: unknown) {
+  const store: EndRecord = {}
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return store
+  for (const [deck, raw] of Object.entries(value)) {
+    const links = linksFrom(raw)
+    if (!links) continue
+    store[deck] = links
+  }
+  return store
+}
+
 function readRaw(key: string) {
   if (!hasGm()) return readLocal(key)
   try {
@@ -137,9 +188,14 @@ function emit(key: string, raw: unknown) {
     for (const listener of listeners) listener({ kind: 'dictionary', value })
     return
   }
-  if (key !== HIDDEN_KEY) return
-  const value = hiddenFrom(raw)
-  for (const listener of listeners) listener({ kind: 'hidden', value })
+  if (key === HIDDEN_KEY) {
+    const value = hiddenFrom(raw)
+    for (const listener of listeners) listener({ kind: 'hidden', value })
+    return
+  }
+  if (key !== END_KEY) return
+  const value = endFrom(raw)
+  for (const listener of listeners) listener({ kind: 'end', value })
 }
 
 function onGmChange(...args: [string, unknown, unknown, boolean]) {
@@ -150,7 +206,7 @@ function onGmChange(...args: [string, unknown, unknown, boolean]) {
 
 function onStorage(event: StorageEvent) {
   if (event.storageArea && event.storageArea !== localStorage) return
-  if (event.key !== DICTIONARY_KEY && event.key !== HIDDEN_KEY) return
+  if (event.key !== DICTIONARY_KEY && event.key !== HIDDEN_KEY && event.key !== END_KEY) return
   emit(event.key, parseLocal(event.newValue))
 }
 
@@ -160,6 +216,7 @@ function arm() {
   if (hasGm()) {
     gmListen(DICTIONARY_KEY, onGmChange)
     gmListen(HIDDEN_KEY, onGmChange)
+    gmListen(END_KEY, onGmChange)
     return
   }
   window.addEventListener('storage', onStorage)
@@ -192,6 +249,28 @@ export function writeHidden(values: readonly string[]) {
     return
   }
   writeRaw(HIDDEN_KEY, list)
+}
+
+export function readEndLinks(deck: string): EndLinks {
+  arm()
+  return readEnd()[deck] ?? { presentation: '', hidden: [] }
+}
+
+export function writeEndLinks(deck: string, links: { presentation: string, hidden: readonly string[] }) {
+  arm()
+  const store = readEnd()
+  const presentation = endHref(links.presentation)
+  const hidden = qrHiddenFrom(links.hidden)
+  if (!presentation && hidden.length === 0) delete store[deck]
+  else store[deck] = { presentation, hidden }
+  if (Object.keys(store).length === 0) removeRaw(END_KEY)
+  else writeRaw(END_KEY, store)
+}
+
+function readEnd() {
+  const raw = readRaw(END_KEY)
+  if (raw === missing || raw === undefined) return {}
+  return endFrom(raw)
 }
 
 export function subscribeStore(listener: (event: StoreEvent) => void) {

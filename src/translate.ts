@@ -400,6 +400,7 @@ function adoptHidden(values: readonly string[]) {
 
 subscribeStore((event) => {
   if (event.kind === 'dictionary') adoptDictionary(event.value)
-  else adoptHidden(event.value)
+  else if (event.kind === 'hidden') adoptHidden(event.value)
+  else return
   notifyWatchers()
 })

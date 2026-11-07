@@ -968,6 +968,97 @@ a {
   }
 }
 
+.qr-row:not(:has(.qr-link)) {
+  display: none;
+}
+
+.overlay.is-editing .qr-row:not(:has(.qr-link)) {
+  display: flex;
+}
+
+.overlay:not(.is-editing) .qr-row:not(:has(.qr-link:not(.is-hidden))) {
+  display: none;
+}
+
+.qr-row:has(.qr-link:not(.is-hidden) ~ .qr-link:not(.is-hidden) ~ .qr-link:not(.is-hidden)) .qr-mark,
+.overlay.is-editing .paper-end .qr-mark {
+  width: 210px;
+  height: 210px;
+}
+
+.overlay.is-editing .qr-row {
+  gap: 24px;
+}
+
+.overlay.is-editing .qr-link {
+  cursor: pointer;
+  outline: 2px dashed var(--seal);
+  outline-offset: 6px;
+}
+
+.qr-link.is-hidden {
+  display: none;
+}
+
+.overlay.is-editing .qr-link.is-hidden {
+  display: flex;
+  opacity: 0.45;
+}
+
+.qr-add {
+  display: none;
+  align-self: center;
+  cursor: pointer;
+  border: 2px dashed var(--seal);
+  background: transparent;
+  padding: 12px 16px;
+  color: var(--ink);
+  font-weight: 600;
+  font-size: 24px;
+  font-family: var(--display);
+  letter-spacing: -0.03em;
+
+  &:focus-visible {
+    outline: 2px solid var(--ink);
+    outline-offset: 4px;
+  }
+}
+
+.overlay.is-editing .qr-add {
+  display: inline-flex;
+  align-items: center;
+}
+
+.overlay.is-editing .qr-row:has([data-qr='presentation']) .qr-add {
+  display: none;
+}
+
+.qr-editor-field {
+  border: 1px solid var(--muted);
+  background: #fffaf3;
+  padding: 10px 12px;
+  width: 100%;
+  color: var(--ink);
+  font: inherit;
+  line-height: 1.35;
+
+  &:focus-visible {
+    outline: 2px solid var(--ink);
+    outline-offset: 2px;
+  }
+}
+
+.qr-editor-error {
+  margin: 0;
+  color: var(--seal);
+  font-size: 13px;
+  line-height: 1.35;
+
+  &[hidden] {
+    display: none;
+  }
+}
+
 .qr-mark {
   display: block;
   width: 300px;
@@ -1195,6 +1286,7 @@ a {
   left: 0;
   transform: scale(var(--thumb, 0.2));
   transform-origin: top left;
+  background: var(--paper);
   width: calc(var(--stage-w) * 1px);
   height: calc(var(--stage-h) * 1px);
   pointer-events: none;

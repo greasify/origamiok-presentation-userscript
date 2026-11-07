@@ -1,7 +1,7 @@
 import type { PageModel } from '../parse-page'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { hideCopy, showCopy } from '../translate'
-import { applyHidden, applyText, renderSlides } from './slides'
+import { applyEndLinks, applyHidden, applyText, renderSlides } from './slides'
 
 const page: PageModel = {
   sourceUrl: 'https://origamiok.com/origami-swan/',
@@ -55,10 +55,26 @@ describe('headings', () => {
     expect(cardTitle?.textContent).toBe('Лицо лягушки')
 
     const end = rendered.at(-2)?.root
-    const caption = end?.querySelector('.qr-link span:last-child')
+    const caption = end?.querySelector('[data-qr="pictures"] span:last-child')
     expect(caption?.textContent).toBe('С картинками')
     expect(caption?.classList.contains('is-copy')).toBe(false)
     expect(bindings.has('С картинками')).toBe(false)
+    expect(end?.querySelector('.qr-add')?.textContent).toBe('Презентация')
+  })
+
+  it('adds a presentation qr and hides the picture code', () => {
+    const { rendered } = renderSlides(page)
+    const end = rendered.find(slide => slide.root.classList.contains('paper-end'))?.root
+    if (!end) throw new Error('missing end')
+    applyEndLinks(end, { presentation: 'https://slides.example/swan', hidden: ['pictures'] })
+    const presentation = end.querySelector<HTMLAnchorElement>('[data-qr="presentation"]')
+    expect(end.querySelector('[data-qr="pictures"]')?.classList.contains('is-hidden')).toBe(true)
+    expect(presentation?.textContent).toContain('Презентация')
+    expect(presentation?.getAttribute('href')).toBe('https://slides.example/swan')
+    expect(presentation?.nextElementSibling?.classList.contains('qr-add')).toBe(true)
+    applyEndLinks(end, { presentation: '', hidden: [] })
+    expect(end.querySelector('[data-qr="presentation"]')).toBeNull()
+    expect(end.querySelector('[data-qr="pictures"]')?.classList.contains('is-hidden')).toBe(false)
   })
 
   it('hides a stored paragraph and leaves the title', () => {
