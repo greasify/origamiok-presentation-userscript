@@ -23,12 +23,12 @@ describe('cover lines', () => {
 
   it('counts every sheet size on the cover', () => {
     const line = (paper: string) => factLines(facts({ paper }), 0).find(item => item.kind === 'paper')?.text
-    expect(line('15cm x 15cm / 2')).toBe('2 листа по 15 см')
-    expect(line('15×15 cm / 2')).toBe('2 листа по 15 см')
-    expect(line('15×15 cm / 4')).toBe('4 листа по 15 см')
-    expect(line('15×15 cm/2 7.5×7.5 cm/2')).toBe('2 листа по 15 см и 2 листа по 7.5 см')
+    expect(line('15cm x 15cm / 2')).toBe('2 листа 15×15 см')
+    expect(line('15×15 cm / 2')).toBe('2 листа 15×15 см')
+    expect(line('15×15 cm / 4')).toBe('4 листа 15×15 см')
+    expect(line('15×15 cm/2 7.5×7.5 cm/2')).toBe('2 листа 15×15 см, 2 листа 7.5×7.5 см')
     expect(line('a square of paper')).toBe('1 лист, a square of paper')
-    expect(paperLine('15×20 cm')).toBe('1 лист по 15×20 см')
+    expect(paperLine('15×20 cm')).toBe('1 лист 15×20 см')
     expect(capturePaper('Folding time: 20 minutes Paper: 15×15 cm / 4 Total steps: 11')).toBe('15×15 cm / 4')
     expect(capturePaper('Paper: 15×15 cm/2 7.5×7.5 cm/2 Difficulty: easy')).toBe('15×15 cm/2 7.5×7.5 cm/2')
   })

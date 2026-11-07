@@ -48,9 +48,8 @@ export function paperLine(raw: string) {
     const width = measure(sheet[1] ?? '')
     const height = measure(sheet[2] ?? '')
     const count = sheet[3] ? Number(sheet[3]) : 1
-    const size = width === height ? `${width} см` : `${width}×${height} см`
-    return `${count} ${plural(count, ['лист', 'листа', 'листов'])} по ${size}`
-  }).join(' и ')
+    return `${count} ${plural(count, ['лист', 'листа', 'листов'])} ${width}×${height} см`
+  }).join(', ')
 }
 
 export function factLines(facts: Facts, stepCount: number) {
