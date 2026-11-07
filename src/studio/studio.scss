@@ -233,12 +233,12 @@ select:focus-visible {
 .studio-more {
   display: grid;
   place-items: center;
-  width: 28px;
-  height: 28px;
+  opacity: 0;
   border: 0;
   background: transparent;
+  width: 28px;
+  height: 28px;
   color: inherit;
-  opacity: 0;
 
   .studio-slide:hover &,
   .studio-slide:focus-within &,
@@ -258,15 +258,15 @@ select:focus-visible {
 }
 
 .studio-menu {
-  position: fixed;
-  z-index: 40;
   display: flex;
+  position: fixed;
   flex-direction: column;
+  z-index: 40;
+  box-shadow: 0 12px 32px rgb(0 0 0 / 35%);
   border: 1px solid var(--line);
   background: #1c1915;
   padding: 4px;
   min-width: 168px;
-  box-shadow: 0 12px 32px rgb(0 0 0 / 35%);
 
   &[hidden] {
     display: none;
@@ -274,9 +274,9 @@ select:focus-visible {
 }
 
 .studio-menu-sep {
-  height: 1px;
   margin: 4px 0;
   background: var(--line);
+  height: 1px;
 }
 
 .studio-menu-item {
