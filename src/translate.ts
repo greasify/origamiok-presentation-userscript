@@ -41,11 +41,13 @@ interface Job {
 const SOURCE = 'en'
 const TARGET = 'ru'
 const STORE_KEY = 'origami-presentation:v1:en:ru'
+const HIDDEN_KEY = 'origami-presentation:v1:hidden'
 
 const memory = new Map<string, string>()
 const pending = new Map<string, Job>()
 const revision = new Map<string, number>()
 let dictionary: Record<string, string> | null = null
+let hidden: Set<string> | null = null
 let active = 0
 let scheduled = false
 let engine: TranslatorEngine | null = null
@@ -113,9 +115,60 @@ export function saveTranslation(text: string, translated: string) {
   settle(job, value)
 }
 
+function loadHidden() {
+  if (hidden) return hidden
+  const store = new Set<string>()
+  try {
+    const parsed = JSON.parse(localStorage.getItem(HIDDEN_KEY) ?? '') as unknown
+    if (Array.isArray(parsed)) {
+      for (const item of parsed) {
+        if (typeof item === 'string' && item.trim()) store.add(item.trim())
+      }
+    }
+  } catch {
+    // A broken record is replaced on the next successful write.
+  }
+  hidden = store
+  return store
+}
+
+function persistHidden() {
+  if (!hidden) return
+  try {
+    if (hidden.size === 0) localStorage.removeItem(HIDDEN_KEY)
+    else localStorage.setItem(HIDDEN_KEY, JSON.stringify([...hidden]))
+  } catch {
+    // Storage can be full or blocked. The memory set still covers this visit.
+  }
+}
+
+export function isCopyHidden(text: string) {
+  const source = text.trim()
+  if (!source) return false
+  return loadHidden().has(source)
+}
+
+export function hideCopy(text: string) {
+  const source = text.trim()
+  if (!source) return
+  const store = loadHidden()
+  if (store.has(source)) return
+  store.add(source)
+  persistHidden()
+}
+
+export function showCopy(text: string) {
+  const source = text.trim()
+  if (!source) return
+  const store = loadHidden()
+  if (!store.delete(source)) return
+  persistHidden()
+}
+
 export function invalidateTranslation(text: string) {
   const source = text.trim()
   if (!source) return
+  showCopy(source)
   bump(source)
   memory.delete(source)
   const store = loadDictionary()

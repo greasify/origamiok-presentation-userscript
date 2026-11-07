@@ -1,6 +1,7 @@
 import type { PageModel } from '../parse-page'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { applyText, renderSlides } from './slides'
+import { hideCopy, showCopy } from '../translate'
+import { applyHidden, applyText, renderSlides } from './slides'
 
 const page: PageModel = {
   sourceUrl: 'https://origamiok.com/origami-swan/',
@@ -58,6 +59,20 @@ describe('headings', () => {
     expect(caption?.textContent).toBe('С картинками')
     expect(caption?.classList.contains('is-copy')).toBe(false)
     expect(bindings.has('С картинками')).toBe(false)
+  })
+
+  it('hides a stored paragraph and leaves the title', () => {
+    hideCopy('fold the corner. leave it flat.')
+    try {
+      const { rendered, bindings } = renderSlides(page)
+      const paragraph = rendered[1]?.root.querySelector('p')
+      expect(paragraph?.classList.contains('is-hidden')).toBe(true)
+      expect(rendered[0]?.root.querySelector('h1')?.classList.contains('is-hidden')).toBe(false)
+      applyHidden(bindings, 'fold the corner. leave it flat.', false)
+      expect(paragraph?.classList.contains('is-hidden')).toBe(false)
+    } finally {
+      showCopy('fold the corner. leave it flat.')
+    }
   })
 })
 

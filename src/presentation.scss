@@ -694,6 +694,15 @@ a {
   border: 2px dashed var(--seal);
 }
 
+.is-hidden {
+  display: none;
+}
+
+.overlay.is-editing .is-hidden {
+  display: block;
+  opacity: 0.45;
+}
+
 .copy-editor {
   display: flex;
   position: absolute;
@@ -745,6 +754,7 @@ a {
   gap: 8px;
 }
 
+.copy-editor-hide,
 .copy-editor-reset,
 .copy-editor-cancel,
 .copy-editor-save {

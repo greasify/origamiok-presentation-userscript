@@ -4,7 +4,7 @@ import { el } from '@zero-dependency/dom'
 import { renderSVG } from 'uqr'
 import { factLines, toolLines } from '../parse-page'
 import { capitalLead } from '../parse/title'
-import { cachedTranslation } from '../translate'
+import { cachedTranslation, isCopyHidden } from '../translate'
 import { FACT_ICONS, photoFrame } from './dom'
 import { photoShow } from './slideshow'
 
@@ -177,6 +177,7 @@ function bind(node: HTMLElement, source: string, sink: CopySink) {
   const text = source.trim()
   if (!text) return
   node.classList.add('is-copy')
+  if (isCopyHidden(text)) node.classList.add('is-hidden')
   node.dataset.source = text
   paint(node, cachedTranslation(text) ?? text)
   const bucket = sink.bindings.get(text) ?? new Set<HTMLElement>()
@@ -349,4 +350,8 @@ export function renderSlides(page: PageModel) {
 
 export function applyText(bindings: Map<string, Set<HTMLElement>>, source: string, translated: string) {
   bindings.get(source)?.forEach(node => paint(node, translated))
+}
+
+export function applyHidden(bindings: Map<string, Set<HTMLElement>>, source: string, hidden: boolean) {
+  bindings.get(source)?.forEach(node => node.classList.toggle('is-hidden', hidden))
 }

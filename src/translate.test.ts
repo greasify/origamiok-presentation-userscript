@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 const STORE_KEY = 'origami-presentation:v1:en:ru'
+const HIDDEN_KEY = 'origami-presentation:v1:hidden'
 
 interface Engine {
   translate: (input: string) => Promise<string>
@@ -39,11 +40,29 @@ describe('translation store', () => {
     expect(localStorage.getItem(STORE_KEY)).toBeNull()
   })
 
-  it('forgets a stored line so it can be translated again', async () => {
-    const { cachedTranslation, invalidateTranslation, saveTranslation } = await loadTranslate()
+  it('hides a line without turning it into an empty translation', async () => {
+    const { cachedTranslation, hideCopy, isCopyHidden, saveTranslation } = await loadTranslate()
     saveTranslation('fold the corner', 'сложи угол')
+    hideCopy('   ')
+    hideCopy('fold the corner')
+    expect(isCopyHidden('fold the corner')).toBe(true)
+    expect(cachedTranslation('fold the corner')).toBe('сложи угол')
+    expect(JSON.parse(localStorage.getItem(HIDDEN_KEY) ?? '')).toEqual(['fold the corner'])
+    const again = await loadTranslate()
+    expect(again.isCopyHidden('fold the corner')).toBe(true)
+    again.showCopy('fold the corner')
+    expect(again.isCopyHidden('fold the corner')).toBe(false)
+    expect(localStorage.getItem(HIDDEN_KEY)).toBeNull()
+  })
+
+  it('forgets a stored line so it can be translated again', async () => {
+    const { cachedTranslation, hideCopy, invalidateTranslation, isCopyHidden, saveTranslation } = await loadTranslate()
+    saveTranslation('fold the corner', 'сложи угол')
+    hideCopy('fold the corner')
     invalidateTranslation('fold the corner')
     expect(cachedTranslation('fold the corner')).toBeNull()
+    expect(isCopyHidden('fold the corner')).toBe(false)
+    expect(localStorage.getItem(HIDDEN_KEY)).toBeNull()
     expect(JSON.parse(localStorage.getItem(STORE_KEY) ?? '')).toEqual({})
   })
 

@@ -3,6 +3,8 @@ import { el } from '@zero-dependency/dom'
 export interface EditorDraft {
   source: string
   current: string
+  paragraph?: boolean
+  hidden?: boolean
 }
 
 export interface EditorController {
@@ -24,6 +26,7 @@ function textButton(className: string, label: string) {
 export function createEditor(handlers: {
   onSave: (source: string, value: string) => void
   onReset: (source: string) => void
+  onHide?: (source: string, hidden: boolean) => void
   onDismiss?: (source: string) => void
 }): EditorController {
   const root = el('div', { className: 'copy-editor' })
@@ -35,13 +38,16 @@ export function createEditor(handlers: {
   const field = el('textarea', { className: 'copy-editor-field' })
   field.rows = 4
   const actions = el('div', { className: 'copy-editor-actions' })
+  const hideButton = textButton('copy-editor-hide', 'Скрыть')
+  hideButton.hidden = true
   const resetButton = textButton('copy-editor-reset', 'Сброс')
   const cancelButton = textButton('copy-editor-cancel', 'Отмена')
   const saveButton = textButton('copy-editor-save', 'Сохранить')
-  actions.append(resetButton, cancelButton, saveButton)
+  actions.append(hideButton, resetButton, cancelButton, saveButton)
   root.append(sourceLine, field, actions)
 
   let source = ''
+  let concealed = false
 
   const close = () => {
     if (root.hidden) return
@@ -64,10 +70,19 @@ export function createEditor(handlers: {
     close()
   }
 
+  const toggleHidden = () => {
+    if (!source) return
+    handlers.onHide?.(source, !concealed)
+    close()
+  }
+
   const open = (draft: EditorDraft) => {
     source = draft.source
+    concealed = Boolean(draft.hidden)
     sourceLine.textContent = draft.source
     field.value = draft.current
+    hideButton.hidden = !draft.paragraph
+    hideButton.textContent = concealed ? 'Показать' : 'Скрыть'
     root.hidden = false
     field.focus()
   }
@@ -90,6 +105,7 @@ export function createEditor(handlers: {
   }
 
   cancelButton.addEventListener('click', close)
+  hideButton.addEventListener('click', toggleHidden)
   resetButton.addEventListener('click', reset)
   saveButton.addEventListener('click', commit)
 

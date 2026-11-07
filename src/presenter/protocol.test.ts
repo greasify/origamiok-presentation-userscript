@@ -127,6 +127,15 @@ describe('incoming presenter state', () => {
       type: 'command',
       command: { type: 'text-reset', key: 'deck', source: 'Fold' },
     })
+    const hide = JSON.stringify({
+      type: 'command',
+      command: { type: 'text-hide', key: 'deck', source: 'Fold', hidden: true },
+    })
+    expect(parseHubMessage(hide)).toEqual({
+      type: 'command',
+      command: { type: 'text-hide', key: 'deck', source: 'Fold', hidden: true },
+    })
+    expect(parseHubMessage('{"type":"command","command":{"type":"text-hide","key":"deck","source":"Fold","hidden":"yes"}}')).toBeNull()
     expect(parseHubMessage('{"type":"command","command":{"type":"copy-scroll","key":"deck","index":0,"top":"nope"}}')).toBeNull()
   })
 

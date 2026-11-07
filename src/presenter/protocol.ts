@@ -39,6 +39,7 @@ export type RemoteCommand
     | { type: 'copy-scroll', key: string, index: number, top: number }
     | { type: 'text-save', key: string, source: string, value: string }
     | { type: 'text-reset', key: string, source: string }
+    | { type: 'text-hide', key: string, source: string, hidden: boolean }
 
 export type HubMessage
   = | { type: 'hello', role: 'stage' | 'remote' }
@@ -180,6 +181,7 @@ function isCommand(value: unknown): value is RemoteCommand {
   if (value.type === 'copy-scroll') return typeof value.index === 'number' && typeof value.top === 'number'
   if (value.type === 'text-save') return typeof value.source === 'string' && typeof value.value === 'string'
   if (value.type === 'text-reset') return typeof value.source === 'string'
+  if (value.type === 'text-hide') return typeof value.source === 'string' && typeof value.hidden === 'boolean'
   return false
 }
 
@@ -246,7 +248,7 @@ function clampUnit(value: number) {
 }
 
 function tidyCommand(command: RemoteCommand): RemoteCommand {
-  if (command.type === 'lightbox-close' || command.type === 'text-save' || command.type === 'text-reset') return command
+  if (command.type === 'lightbox-close' || command.type === 'text-save' || command.type === 'text-reset' || command.type === 'text-hide') return command
   if (command.type === 'lightbox-view') {
     return {
       type: 'lightbox-view',

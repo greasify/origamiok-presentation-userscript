@@ -73,6 +73,11 @@ function thumbCss(css: string) {
   outline: none;
   border: 2px dashed var(--seal);
 }
+:host(.is-editing) .is-hidden {
+  display: block;
+  opacity: 0.45;
+  pointer-events: auto;
+}
 `
 }
 
@@ -206,6 +211,10 @@ const editor = createEditor({
   onReset(source) {
     if (!current?.open) return
     send({ type: 'text-reset', key: current.key, source })
+  },
+  onHide(source, hidden) {
+    if (!current?.open) return
+    send({ type: 'text-hide', key: current.key, source, hidden })
   },
 })
 
@@ -431,7 +440,12 @@ currentCard.addEventListener('click', (event) => {
   })
   if (!copy?.dataset.source) return
   event.preventDefault()
-  editor.open({ source: copy.dataset.source, current: copy.textContent ?? '' })
+  editor.open({
+    source: copy.dataset.source,
+    current: copy.textContent ?? '',
+    paragraph: copy.tagName === 'P',
+    hidden: copy.classList.contains('is-hidden'),
+  })
 })
 overviewButton.addEventListener('click', () => {
   const open = overview.hidden

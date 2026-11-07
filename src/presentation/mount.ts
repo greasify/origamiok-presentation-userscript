@@ -9,8 +9,10 @@ import { canonicalPath, deckKey } from '../presenter/protocol'
 import {
   beginTranslation,
   cachedTranslation,
+  hideCopy,
   invalidateTranslation,
   saveTranslation,
+  showCopy,
   translatorAvailability,
 } from '../translate'
 import {
@@ -41,7 +43,7 @@ import {
 } from './host'
 import { createLightbox } from './lightbox'
 import { createOverview, slideMarkup } from './overview'
-import { applyText, renderSlides } from './slides'
+import { applyHidden, applyText, renderSlides } from './slides'
 import { attachStage, presenterHref } from './sync'
 
 export function mountPresentation(page: PageModel) {
@@ -153,11 +155,21 @@ export function mountPresentation(page: PageModel) {
     schedule()
   }
 
+  const setHidden = (source: string, concealed: boolean) => {
+    if (concealed) hideCopy(source)
+    else showCopy(source)
+    applyHidden(bindings, source, concealed)
+    markupCache = null
+    schedule()
+  }
+
   const resetTranslation = (source: string) => {
     savedNow.delete(source)
     heldTranslation.delete(source)
     invalidateTranslation(source)
+    applyHidden(bindings, source, false)
     rememberText(source, source)
+    schedule()
     if (!translatorPromise) return
     translatorPromise.then((translator) => {
       if (!translator) return
@@ -170,6 +182,7 @@ export function mountPresentation(page: PageModel) {
   editor = createEditor({
     onSave: paintSaved,
     onReset: resetTranslation,
+    onHide: setHidden,
     onDismiss: (source) => {
       const translated = heldTranslation.get(source)
       heldTranslation.delete(source)
@@ -486,6 +499,10 @@ export function mountPresentation(page: PageModel) {
       resetTranslation(command.source)
       return
     }
+    if (command.type === 'text-hide') {
+      setHidden(command.source, command.hidden)
+      return
+    }
     const root = rendered[index]?.root
     if (!root) return
     const images = photosIn(root)
@@ -503,7 +520,12 @@ export function mountPresentation(page: PageModel) {
       const copy = event.target.closest('.is-copy')
       if (copy instanceof HTMLElement && copy.dataset.source) {
         event.preventDefault()
-        editor.open({ source: copy.dataset.source, current: copy.textContent ?? '' })
+        editor.open({
+          source: copy.dataset.source,
+          current: copy.textContent ?? '',
+          paragraph: copy.tagName === 'P',
+          hidden: copy.classList.contains('is-hidden'),
+        })
         return
       }
       if (card) return
