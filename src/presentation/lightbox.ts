@@ -52,9 +52,12 @@ export function createLightbox(overlay: HTMLElement, onClose: () => void): Light
   const closeButton = sealButton('lightbox-close', 'Закрыть', CLOSE_ICON)
   const prev = sealButton('lightbox-nav is-prev', 'Предыдущее фото', PREV_ICON)
   const next = sealButton('lightbox-nav is-next', 'Следующее фото', NEXT_ICON)
+  const dots = el('div', { className: 'photo-dots' })
+  dots.hidden = true
+  let dotButtons: HTMLButtonElement[] = []
   frame.append(photo)
   stage.append(frame)
-  root.append(stage, prev, next, zoomButton, closeButton)
+  root.append(stage, prev, next, zoomButton, closeButton, dots)
 
   let magnification = ZOOM_MIN
   let panX = 0
@@ -147,6 +150,9 @@ export function createLightbox(overlay: HTMLElement, onClose: () => void): Light
     onIndex = null
     prev.hidden = true
     next.hidden = true
+    dots.hidden = true
+    dots.replaceChildren()
+    dotButtons = []
     setMagnification(ZOOM_MIN)
   }
 
@@ -159,6 +165,16 @@ export function createLightbox(overlay: HTMLElement, onClose: () => void): Light
     const many = photos.length > 1
     prev.hidden = !many
     next.hidden = !many
+    dots.hidden = !many
+  }
+
+  const markDots = () => {
+    dotButtons.forEach((button, buttonIndex) => {
+      const current = buttonIndex === index
+      button.classList.toggle('is-current', current)
+      if (current) button.setAttribute('aria-current', 'true')
+      else button.removeAttribute('aria-current')
+    })
   }
 
   const showPhoto = (nextIndex: number, notify = true) => {
@@ -170,6 +186,7 @@ export function createLightbox(overlay: HTMLElement, onClose: () => void): Light
     photo.src = item.src
     photo.alt = item.alt
     setMagnification(ZOOM_MIN)
+    markDots()
     if (animate) {
       photo.classList.remove('is-entering')
       void photo.offsetWidth
@@ -178,9 +195,22 @@ export function createLightbox(overlay: HTMLElement, onClose: () => void): Light
     if (notify) onIndex?.(index)
   }
 
+  const paintDots = () => {
+    dots.replaceChildren()
+    dotButtons = photos.map((_, dotIndex) => {
+      const button = el('button', { className: 'photo-dot' })
+      button.type = 'button'
+      button.setAttribute('aria-label', `Фото ${dotIndex + 1}`)
+      button.addEventListener('click', () => showPhoto(dotIndex))
+      dots.append(button)
+      return button
+    })
+  }
+
   const open = (items: readonly LightboxPhoto[], start: number, follow?: (index: number) => void) => {
     photos = items
     onIndex = follow ?? null
+    paintDots()
     paintNav()
     showPhoto(start, false)
     overlay.classList.add('is-zoomed')

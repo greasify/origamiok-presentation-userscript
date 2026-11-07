@@ -51,6 +51,29 @@ describe('lightbox photos', () => {
 
     lightbox.onKey(new KeyboardEvent('keydown', { key: 'ArrowRight' }))
     expect(photo(lightbox)?.getAttribute('src')).toBe('https://origamiok.com/only.webp')
+    expect(lightbox.root.querySelector('.photo-dots')?.hasAttribute('hidden')).toBe(true)
+  })
+
+  it('marks the active photo and jumps from a dot', () => {
+    const lightbox = mount()
+    lightbox.open([
+      { src: 'https://origamiok.com/0.webp', alt: 'One' },
+      { src: 'https://origamiok.com/1.webp', alt: 'Two' },
+    ], 0)
+    const dots = [...lightbox.root.querySelectorAll<HTMLButtonElement>('.photo-dot')]
+    expect(dots).toHaveLength(2)
+    expect(lightbox.root.querySelector('.photo-dots')?.hasAttribute('hidden')).toBe(false)
+    expect(dots[0]?.classList.contains('is-current')).toBe(true)
+    expect(dots[0]?.getAttribute('aria-current')).toBe('true')
+
+    lightbox.onKey(new KeyboardEvent('keydown', { key: 'ArrowRight' }))
+    expect(dots[1]?.classList.contains('is-current')).toBe(true)
+    expect(dots[0]?.hasAttribute('aria-current')).toBe(false)
+
+    dots[0]?.click()
+    expect(photo(lightbox)?.getAttribute('src')).toBe('https://origamiok.com/0.webp')
+    expect(dots[0]?.classList.contains('is-current')).toBe(true)
+    expect(dots[0]?.getAttribute('aria-current')).toBe('true')
   })
 
   it('applies a normalized zoom from the presenter', () => {

@@ -577,6 +577,10 @@ a {
   }
 }
 
+.slide.is-active .photo-frames .photo-slot.is-shown {
+  pointer-events: auto;
+}
+
 .photo-frames {
   display: grid;
   height: 100%;
@@ -591,7 +595,6 @@ a {
     &.is-shown {
       opacity: 1;
       z-index: 1;
-      pointer-events: auto;
     }
   }
 
@@ -851,6 +854,17 @@ a {
 
   to {
     opacity: 1;
+  }
+}
+
+.lightbox .photo-dots {
+  top: auto;
+  bottom: 18px;
+  z-index: 1;
+  padding-top: 0;
+
+  &[hidden] {
+    display: none;
   }
 }
 

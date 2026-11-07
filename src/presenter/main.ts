@@ -201,7 +201,9 @@ zoomButton.setAttribute('aria-pressed', 'false')
 const photoClose = seal('Закрыть', CLOSE_ICON)
 const photoTools = el('div', { className: 'photo-tools' })
 photoTools.append(zoomButton, photoClose)
-photoSheet.append(photoStage, photoPrev, photoNext, photoTools)
+const photoDots = el('div', { className: 'photo-dots' })
+photoDots.hidden = true
+photoSheet.append(photoStage, photoPrev, photoNext, photoTools, photoDots)
 
 const editor = createEditor({
   onSave(source, value) {
@@ -412,6 +414,8 @@ function render() {
   const many = images.length > 1
   photoPrev.hidden = !many
   photoNext.hidden = !many
+  photoDots.hidden = !many
+  paintPhotoDots(images, photoIndex)
   photoSheet.hidden = !(photoWanted || state.lightbox)
   if (!item) return
   if (photoImg.getAttribute('src') !== item.src) {
@@ -471,6 +475,36 @@ function stepPhoto(delta: number) {
   if (images.length < 2) return
   const nextIndex = ((current.lightbox?.index ?? 0) + delta + images.length) % images.length
   send({ type: 'lightbox-photo', key: current.key, index: nextIndex })
+}
+
+let photoDotKey = ''
+
+function selectPhoto(index: number) {
+  if (!current?.open) return
+  const images = imagesOf(current)
+  if (images.length < 2) return
+  send({ type: 'lightbox-photo', key: current.key, index: clampIndex(index, images.length) })
+}
+
+function paintPhotoDots(images: { src: string }[], photoIndex: number) {
+  const key = images.map(image => image.src).join('\n')
+  if (key !== photoDotKey) {
+    photoDotKey = key
+    photoDots.replaceChildren()
+    images.forEach((_, dotIndex) => {
+      const button = el('button', { className: 'photo-dot' })
+      button.type = 'button'
+      button.setAttribute('aria-label', `Фото ${dotIndex + 1}`)
+      button.addEventListener('click', () => selectPhoto(dotIndex))
+      photoDots.append(button)
+    })
+  }
+  photoDots.querySelectorAll<HTMLButtonElement>('.photo-dot').forEach((button, buttonIndex) => {
+    const current = buttonIndex === photoIndex
+    button.classList.toggle('is-current', current)
+    if (current) button.setAttribute('aria-current', 'true')
+    else button.removeAttribute('aria-current')
+  })
 }
 
 photoImg.addEventListener('load', () => {

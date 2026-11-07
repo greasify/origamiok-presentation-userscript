@@ -343,6 +343,41 @@ a {
   }
 }
 
+.photo-dots {
+  display: flex;
+  position: absolute;
+  right: 0;
+  bottom: calc(18px + env(safe-area-inset-bottom));
+  left: 0;
+  justify-content: center;
+  gap: 8px;
+  z-index: 1;
+
+  &[hidden] {
+    display: none;
+  }
+}
+
+.photo-dot {
+  cursor: pointer;
+  box-shadow: 0 0 0 1px rgb(28 25 21 / 25%);
+  border: 0;
+  border-radius: 50%;
+  background: rgb(255 250 243 / 70%);
+  padding: 0;
+  width: 8px;
+  height: 8px;
+
+  &.is-current {
+    background: var(--seal);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--seal);
+    outline-offset: 3px;
+  }
+}
+
 .photo-nav {
   position: absolute;
   top: 50%;
