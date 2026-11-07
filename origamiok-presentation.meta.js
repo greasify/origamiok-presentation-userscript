@@ -6,10 +6,13 @@
 // @homepage    https://greasify.github.io/userscript-origamiok-presentation/
 // @match       https://origamiok.com/*
 // @match       https://www.origamiok.com/*
-// @grant       none
 // @run-at      document-idle
-// @inject-into page
 // @noframes    
+// @grant       GM_setValue
+// @grant       GM_getValue
+// @grant       GM_deleteValue
+// @grant       GM_addValueChangeListener
+// @grant       unsafeWindow
 // @updateURL   https://greasify.github.io/userscript-origamiok-presentation/origamiok-presentation.meta.js
 // @downloadURL https://greasify.github.io/userscript-origamiok-presentation/origamiok-presentation.user.js
 // ==/UserScript==
