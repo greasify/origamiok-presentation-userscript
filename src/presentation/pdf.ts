@@ -1,6 +1,7 @@
 import { el } from '@zero-dependency/dom'
 import presentationCss from '../presentation.scss?inline'
 import { CREASE, FONT_HREF, STAGE_HEIGHT, STAGE_WIDTH } from './dom'
+import { applyGroupQr } from './slides'
 
 const READY_MS = 2000
 
@@ -87,16 +88,16 @@ function cloneSlide(slide: HTMLElement) {
 }
 
 function printable(slide: HTMLElement) {
-  if (slide.classList.contains('paper-related')) return false
-  if (slide.querySelector('.qr-link')) return false
-  return true
+  return !slide.classList.contains('paper-related')
 }
 
 export function buildPrintDeck(slides: readonly HTMLElement[]) {
   const deck = el('div', { className: 'print-deck' })
   for (const slide of slides) {
     if (!printable(slide)) continue
-    deck.append(cloneSlide(slide))
+    const clone = cloneSlide(slide)
+    if (clone.classList.contains('paper-end')) applyGroupQr(clone)
+    deck.append(clone)
   }
   return deck
 }

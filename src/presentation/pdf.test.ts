@@ -54,21 +54,28 @@ describe('print deck', () => {
     expect(root.querySelector('.photo-dots')).not.toBeNull()
   })
 
-  it('leaves out the qr slide and the related ideas', () => {
+  it('prints the end slide with the group qr and leaves related ideas out', () => {
     const step = slide('<p>Сложи угол</p>')
     const end = document.createElement('article')
     end.className = 'slide paper-end'
-    end.innerHTML = '<h1>Swan</h1><a class="qr-link"><span class="qr-mark"></span><span>С картинками</span></a>'
+    end.innerHTML = '<h1>Swan</h1><div class="qr-row"><a class="qr-link" href="https://origamiok.com/swan"><span>С картинками</span></a><a class="qr-link" href="https://www.youtube.com/watch?v=abc"><span>Видео</span></a></div>'
+    const endHtml = end.innerHTML
     const related = document.createElement('article')
     related.className = 'slide paper-related'
     related.innerHTML = '<h1>Other ideas</h1>'
     const deck = buildPrintDeck([step, end, related])
     const pages = [...deck.querySelectorAll('.slide')]
+    const link = pages[1]?.querySelector('a.qr-link')
 
-    expect(pages).toHaveLength(1)
+    expect(pages).toHaveLength(2)
     expect(pages[0]?.querySelector('p')?.textContent).toBe('Сложи угол')
-    expect(pages[0]?.querySelector('.qr-link')).toBeNull()
-    expect(end.querySelector('.qr-link')).not.toBeNull()
+    expect(pages[1]?.querySelector('h1')?.textContent).toBe('Больше инструкций')
+    expect(pages[1]?.querySelectorAll('.qr-link')).toHaveLength(1)
+    expect(link?.getAttribute('href')).toBe('https://t.me/origami_kp')
+    expect(link?.textContent?.trim()).toBe('')
+    expect(link?.querySelector('svg')).not.toBeNull()
+    expect(end.innerHTML).toBe(endHtml)
+    expect(deck.querySelector('.paper-related')).toBeNull()
     expect(related.querySelector('h1')?.textContent).toBe('Other ideas')
   })
 

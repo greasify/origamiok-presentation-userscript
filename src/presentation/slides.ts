@@ -262,8 +262,10 @@ function renderSection(slide: SlideModel, sink: CopySink) {
 }
 
 const PRESENTATION_LABEL = 'Презентация'
+const GROUP_HREF = 'https://t.me/origami_kp'
+const GROUP_LABEL = 'Больше инструкций'
 
-function qrLink(href: string, label: string, kind: 'pictures' | 'video' | 'presentation') {
+function qrLink(href: string, label: string, kind: 'pictures' | 'video' | 'presentation' | 'group') {
   const link = el('a', { className: 'qr-link' })
   link.href = href
   link.target = '_blank'
@@ -276,9 +278,12 @@ function qrLink(href: string, label: string, kind: 'pictures' | 'video' | 'prese
     blackColor: 'currentColor',
     whiteColor: '#f3ecdf',
   })
-  const caption = el('span')
-  caption.textContent = label
-  link.append(mark, caption)
+  link.append(mark)
+  if (label) {
+    const caption = el('span')
+    caption.textContent = label
+    link.append(caption)
+  }
   return link
 }
 
@@ -295,6 +300,20 @@ function renderEnd(slide: SlideModel, sink: CopySink) {
   row.append(add)
   root.append(row)
   return root
+}
+
+export function applyGroupQr(root: HTMLElement) {
+  const title = root.querySelector('h1') ?? el('h1')
+  title.textContent = GROUP_LABEL
+  title.classList.remove('is-copy', 'is-hidden')
+  delete title.dataset.source
+  let row = root.querySelector('.qr-row')
+  if (!row) {
+    row = el('div', { className: 'qr-row' })
+    root.append(row)
+  }
+  if (!title.parentElement) root.insertBefore(title, row)
+  row.replaceChildren(qrLink(GROUP_HREF, '', 'group'))
 }
 
 function renderRelated(slide: SlideModel, sink: CopySink) {
