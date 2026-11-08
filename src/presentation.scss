@@ -1346,6 +1346,10 @@ a {
   gap: 8px;
   z-index: 1;
   padding: 10px;
+
+  &[hidden] {
+    display: none;
+  }
 }
 
 .presenter-slot {

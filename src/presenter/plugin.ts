@@ -8,7 +8,6 @@ import {
 } from 'node:fs'
 import { networkInterfaces } from 'node:os'
 import { basename, resolve } from 'node:path'
-import { generate } from 'selfsigned'
 import {
   mergeStoredState,
   needsMarkup,
@@ -145,46 +144,6 @@ function createRoom(sockets: ViteDevServer['ws']) {
   })
 }
 
-async function certificate(dir: string, ips: string[]) {
-  const metaPath = resolve(dir, 'meta.json')
-  const keyPath = resolve(dir, 'key.pem')
-  const certPath = resolve(dir, 'cert.pem')
-  const mark = ips.join(',')
-  try {
-    const meta = JSON.parse(readFileSync(metaPath, 'utf8')) as { ips?: string }
-    if (meta.ips === mark) {
-      return { key: readFileSync(keyPath, 'utf8'), cert: readFileSync(certPath, 'utf8') }
-    }
-  } catch {
-    // A new address needs a certificate that names it.
-  }
-  const notAfter = new Date()
-  notAfter.setFullYear(notAfter.getFullYear() + 1)
-  const pems = await generate([{ name: 'commonName', value: 'origami-presenter' }], {
-    algorithm: 'sha256',
-    keySize: 2048,
-    notAfterDate: notAfter,
-    extensions: [
-      { name: 'basicConstraints', cA: false },
-      { name: 'keyUsage', digitalSignature: true, keyEncipherment: true },
-      { name: 'extKeyUsage', serverAuth: true },
-      {
-        name: 'subjectAltName',
-        altNames: [
-          { type: 2, value: 'localhost' },
-          { type: 7, ip: '127.0.0.1' },
-          ...ips.map(ip => ({ type: 7 as const, ip })),
-        ],
-      },
-    ],
-  })
-  mkdirSync(dir, { recursive: true })
-  writeFileSync(keyPath, pems.private)
-  writeFileSync(certPath, pems.cert)
-  writeFileSync(metaPath, JSON.stringify({ ips: mark }))
-  return { key: pems.private, cert: pems.cert }
-}
-
 function publishHub(server: ViteDevServer, port: number) {
   const host = lanIPv4()[0] ?? 'localhost'
   const presenterUrl = `https://${host}:${port}/presenter`
@@ -211,14 +170,6 @@ export function presenterHub(): Plugin {
 
   return {
     name: 'presenter-hub',
-    async config() {
-      const { key, cert } = await certificate(resolve(root, 'node_modules/.cache/origami-presenter'), lanIPv4())
-      return {
-        server: {
-          https: { key, cert },
-        },
-      }
-    },
     configResolved(config) {
       root = config.root
     },

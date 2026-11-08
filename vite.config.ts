@@ -1,4 +1,5 @@
 import { defineConfig } from 'vite'
+import mkcert from 'vite-plugin-mkcert'
 import userscript from 'vite-userscript-plugin'
 import pkg from './package.json' with { type: 'json' }
 import { presenterHub } from './src/presenter/plugin.ts'
@@ -12,6 +13,7 @@ export default defineConfig((config) => {
       sourcemap: config.mode === 'development',
     },
     plugins: [
+      mkcert(),
       presenterHub(),
       studioHub(),
       userscript({

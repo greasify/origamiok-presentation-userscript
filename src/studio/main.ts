@@ -1,10 +1,23 @@
 import type { RemoteCommand, RemoteSlide } from '../presenter/protocol'
 import type { Deck, LibraryGroup, StudioImage, StudioSlide } from './deck'
 import { el } from '@zero-dependency/dom'
+import { renderSVG } from 'uqr'
 import presentationCss from '../presentation.scss?inline'
-import { CREASE, FONT_HREF, STAGE_HEIGHT, STAGE_WIDTH } from '../presentation/dom'
+import {
+  CREASE,
+  EXIT_ICON,
+  FONT_HREF,
+  NEXT_ICON,
+  OVERVIEW_ICON,
+  PRESENTER_ICON,
+  PREV_ICON,
+  sealButton,
+  STAGE_HEIGHT,
+  STAGE_WIDTH,
+} from '../presentation/dom'
+import { lockEscape, unlockEscape } from '../presentation/host'
 import { createLightbox } from '../presentation/lightbox'
-import { slideMarkup } from '../presentation/overview'
+import { createOverview, slideMarkup } from '../presentation/overview'
 import { attachStage, presenterHref } from '../presentation/sync'
 import { clampIndex } from '../presenter/protocol'
 import {
@@ -39,9 +52,7 @@ status.setAttribute('aria-live', 'polite')
 status.textContent = 'Загрузка…'
 const presentButton = el('button', { className: 'studio-present' }, 'Показать')
 presentButton.type = 'button'
-const remoteButton = el('button', { className: 'studio-remote' }, 'Ведущий')
-remoteButton.type = 'button'
-head.append(tabs, titleInput, status, remoteButton, presentButton)
+head.append(tabs, titleInput, status, presentButton)
 
 const work = el('div', { className: 'studio-work' })
 const rail = el('nav', { className: 'studio-rail' })
@@ -75,10 +86,67 @@ const slot = el('div', { className: 'stage-slot' })
 const stage = el('div', { className: 'stage' })
 slot.append(stage)
 viewport.append(slot)
+const showBar = el('div', { className: 'bar' })
+showBar.hidden = true
+const pager = el('div', { className: 'pager' })
+const showPrev = sealButton('', 'Назад', PREV_ICON)
+const showCounter = el('span', { className: 'counter' })
+const showNext = sealButton('', 'Дальше', NEXT_ICON)
+const overviewButton = sealButton('', 'Все слайды', OVERVIEW_ICON)
+overviewButton.setAttribute('aria-expanded', 'false')
+overviewButton.setAttribute('aria-pressed', 'false')
+const showClose = sealButton('', 'Закрыть', EXIT_ICON)
+pager.append(showPrev, showCounter, showNext)
+showBar.append(pager, overviewButton, showClose)
+if (import.meta.env.DEV) {
+  const link = presenterHref()
+  const presenterButton = sealButton('', 'Режим ведущего', PRESENTER_ICON)
+  presenterButton.setAttribute('aria-pressed', 'false')
+  presenterButton.setAttribute('aria-expanded', 'false')
+  const qrCard = el('div', { className: 'presenter-qr' })
+  qrCard.hidden = true
+  const mark = el('span', { className: 'qr-mark' })
+  mark.innerHTML = renderSVG(link, {
+    ecc: 'M',
+    border: 2,
+    blackColor: 'currentColor',
+    whiteColor: '#f3ecdf',
+  })
+  const cardTitle = el('h2')
+  cardTitle.textContent = 'Режим ведущего'
+  const setCard = (open: boolean) => {
+    qrCard.hidden = !open
+    const pressed = open ? 'true' : 'false'
+    presenterButton.setAttribute('aria-pressed', pressed)
+    presenterButton.setAttribute('aria-expanded', pressed)
+  }
+  const openButton = el('button', { className: 'presenter-open' }, 'Открыть')
+  openButton.type = 'button'
+  openButton.addEventListener('click', () => {
+    setCard(false)
+    openRemote()
+  })
+  qrCard.append(mark, cardTitle, openButton)
+  presenterButton.addEventListener('click', () => {
+    setCard(Boolean(qrCard.hidden))
+  })
+  const slot = el('div', { className: 'presenter-slot' })
+  slot.append(presenterButton, qrCard)
+  showBar.insertBefore(slot, showClose)
+}
+const overviewSlides: HTMLElement[] = []
+const overview = createOverview(overviewSlides, picked => showAt(picked), () => {
+  overviewButton.setAttribute('aria-expanded', 'false')
+  overviewButton.setAttribute('aria-pressed', 'false')
+  settleCursor()
+})
 const photo = createLightbox(overlay, () => {})
-overlay.append(field, viewport, photo.root)
+overlay.append(field, viewport, showBar, overview.root, photo.root)
 shadow.append(style, fonts, overlay)
-photo.watch(() => publish())
+photo.watch(() => {
+  publish()
+  settleCursor()
+})
 
 const inspector = el('aside', { className: 'studio-inspector' })
 inspector.setAttribute('aria-label', 'Слайд')
@@ -130,12 +198,6 @@ function placeHost(presenting: boolean) {
   host.style.position = presenting ? 'fixed' : 'relative'
   host.style.zIndex = presenting ? '30' : '0'
   host.style.inset = presenting ? '0' : 'auto'
-}
-
-function placeRemote(presenting: boolean) {
-  remoteButton.classList.toggle('studio-remote-float', presenting)
-  if (presenting) app.append(remoteButton)
-  else head.insertBefore(remoteButton, presentButton)
 }
 
 function deckKey() {
@@ -190,6 +252,7 @@ function scrollCopy(index: number, top: number) {
 function showAt(index: number) {
   if (!state.deck) return
   if (photo.isOpen()) photo.close()
+  if (overview.isOpen()) overview.close()
   const next = clampIndex(index, state.deck.slides.length)
   const moved = next !== state.index
   state.index = next
@@ -231,9 +294,89 @@ function applyCommand(command: RemoteCommand) {
 }
 
 function openRemote() {
-  setPresenting(true)
   const opened = window.open(presenterHref(), 'origami-presenter')
   opened?.focus()
+}
+
+let cursorTimer = 0
+let cursorX = Number.NaN
+let cursorY = Number.NaN
+let suppressFullscreenExit = false
+
+function showIsFullscreen() {
+  return document.fullscreenElement === host
+}
+
+function revealCursor() {
+  window.clearTimeout(cursorTimer)
+  cursorTimer = 0
+  overlay.classList.remove('is-idle')
+}
+
+function settleCursor(reveal = false) {
+  window.clearTimeout(cursorTimer)
+  cursorTimer = 0
+  if (reveal) overlay.classList.remove('is-idle')
+  const busy = overview.isOpen() || photo.isOpen()
+  if (!showIsFullscreen() || busy || overlay.classList.contains('is-idle')) return
+  cursorTimer = window.setTimeout(() => {
+    cursorTimer = 0
+    if (!showIsFullscreen() || overview.isOpen() || photo.isOpen()) return
+    overlay.classList.add('is-idle')
+  }, 2000)
+}
+
+function enterFullscreen() {
+  if (showIsFullscreen()) return
+  const pending = host.requestFullscreen?.()
+  pending?.then(() => {
+    if (photo.isOpen()) lockEscape()
+  }, () => {})
+}
+
+function leaveFullscreen() {
+  if (!showIsFullscreen()) return
+  document.exitFullscreen?.()
+}
+
+function onFullscreenChange() {
+  const fullscreen = showIsFullscreen()
+  overlay.classList.toggle('is-fullscreen', fullscreen)
+  if (fullscreen) {
+    settleCursor(true)
+    if (photo.isOpen()) lockEscape()
+    requestAnimationFrame(updateFit)
+    return
+  }
+  revealCursor()
+  requestAnimationFrame(updateFit)
+  if (!suppressFullscreenExit) return
+  suppressFullscreenExit = false
+  const pending = host.requestFullscreen?.()
+  pending?.then(() => {}, () => {})
+}
+
+function toggleOverview() {
+  if (!state.deck) return
+  if (overview.isOpen()) {
+    overview.close()
+    return
+  }
+  if (photo.isOpen()) photo.close()
+  overviewSlides.length = 0
+  overviewSlides.push(...state.deck.slides.map(slide => renderStudioSlide(slide)))
+  overviewButton.setAttribute('aria-expanded', 'true')
+  overviewButton.setAttribute('aria-pressed', 'true')
+  overview.open(state.index)
+  settleCursor()
+}
+
+function paintChrome() {
+  const total = state.deck?.slides.length ?? 0
+  showCounter.textContent = total ? `${state.index + 1} / ${total}` : ''
+  showPrev.disabled = state.index <= 0
+  showNext.disabled = total === 0 || state.index >= total - 1
+  overviewButton.setAttribute('aria-label', total ? `Все слайды, ${state.index + 1} из ${total}` : 'Все слайды')
 }
 
 function updateFit() {
@@ -319,7 +462,6 @@ function paintActions() {
   const total = state.deck?.slides.length ?? 0
   addButton.disabled = !state.deck
   presentButton.disabled = total === 0
-  remoteButton.disabled = total === 0
   counter.textContent = total ? `${state.index + 1} / ${total}` : ''
 }
 
@@ -443,6 +585,7 @@ function paintStage() {
   if (!slide || !state.deck) return
   stage.append(renderStudioSlide(slide))
   stage.setAttribute('aria-label', `Слайд ${state.index + 1} из ${state.deck.slides.length}`)
+  paintChrome()
   requestAnimationFrame(updateFit)
   publish()
 }
@@ -864,11 +1007,18 @@ function moveSlide(index: number, delta: number) {
 function setPresenting(on: boolean) {
   if (on) closeSlideMenu()
   state.presenting = on
-  if (!on && photo.isOpen()) photo.close()
+  if (!on) {
+    if (photo.isOpen()) photo.close()
+    if (overview.isOpen()) overview.close()
+    leaveFullscreen()
+    revealCursor()
+    unlockEscape()
+  }
   app.classList.toggle('is-presenting', on)
   overlay.classList.toggle('is-showing', on)
+  showBar.hidden = !on
   placeHost(on)
-  placeRemote(on)
+  paintChrome()
   requestAnimationFrame(updateFit)
   publish()
 }
@@ -895,8 +1045,22 @@ async function openDeck(id: string) {
 }
 
 addButton.addEventListener('click', addSlide)
-presentButton.addEventListener('click', () => setPresenting(true))
-remoteButton.addEventListener('click', openRemote)
+presentButton.addEventListener('click', () => {
+  setPresenting(true)
+  enterFullscreen()
+})
+showPrev.addEventListener('click', () => moveSlideView(-1))
+showNext.addEventListener('click', () => moveSlideView(1))
+overviewButton.addEventListener('click', toggleOverview)
+showClose.addEventListener('click', () => setPresenting(false))
+overlay.addEventListener('pointermove', (event) => {
+  if (event.movementX === 0 && event.movementY === 0) return
+  if (event.clientX === cursorX && event.clientY === cursorY) return
+  cursorX = event.clientX
+  cursorY = event.clientY
+  if (showIsFullscreen()) settleCursor(true)
+})
+document.addEventListener('fullscreenchange', onFullscreenChange)
 stage.addEventListener('click', (event) => {
   if (!state.presenting || !(event.target instanceof Element)) return
   const frame = event.target.closest('.photo-frame, .card-photo')
@@ -924,22 +1088,52 @@ window.addEventListener('keydown', (event) => {
   }
   if (state.presenting && photo.isOpen() && event.key === 'Escape') {
     event.preventDefault()
+    event.stopPropagation()
+    suppressFullscreenExit = showIsFullscreen()
     photo.close()
+    queueMicrotask(() => {
+      suppressFullscreenExit = false
+      unlockEscape()
+    })
     return
   }
   if (state.presenting && photo.onKey(event)) return
+  if (state.presenting && overview.onKey(event)) return
   if (event.key === 'Escape' && state.presenting) {
     event.preventDefault()
     setPresenting(false)
     return
   }
   if (!state.presenting) return
-  if (event.key === 'ArrowRight' || event.key === 'PageDown' || event.key === ' ') {
+  if (event.code === 'KeyF' && !event.altKey && !event.ctrlKey && !event.metaKey) {
+    event.preventDefault()
+    if (showIsFullscreen()) leaveFullscreen()
+    else enterFullscreen()
+    return
+  }
+  if (event.code === 'KeyO' && !event.altKey && !event.ctrlKey && !event.metaKey) {
+    event.preventDefault()
+    toggleOverview()
+    return
+  }
+  if (event.key === 'Home') {
+    event.preventDefault()
+    showAt(0)
+    return
+  }
+  if (event.key === 'End') {
+    event.preventDefault()
+    showAt((state.deck?.slides.length ?? 1) - 1)
+    return
+  }
+  const typingOnButton = event.target instanceof HTMLButtonElement
+  if (event.key === 'ArrowRight' || event.key === 'PageDown' || (event.key === ' ' && !event.shiftKey)) {
+    if (event.key === ' ' && typingOnButton) return
     event.preventDefault()
     moveSlideView(1)
     return
   }
-  if (event.key === 'ArrowLeft' || event.key === 'PageUp') {
+  if (event.key === 'ArrowLeft' || event.key === 'PageUp' || (event.key === ' ' && event.shiftKey)) {
     event.preventDefault()
     moveSlideView(-1)
   }
@@ -947,6 +1141,7 @@ window.addEventListener('keydown', (event) => {
 
 function moveSlideView(delta: number) {
   if (!state.deck) return
+  if (overview.isOpen()) overview.close()
   const next = Math.min(state.deck.slides.length - 1, Math.max(0, state.index + delta))
   if (next === state.index) return
   state.index = next
