@@ -1,7 +1,12 @@
+import type { RemoteCommand, RemoteSlide } from '../presenter/protocol'
 import type { Deck, LibraryGroup, StudioImage, StudioSlide } from './deck'
 import { el } from '@zero-dependency/dom'
 import presentationCss from '../presentation.scss?inline'
 import { CREASE, FONT_HREF, STAGE_HEIGHT, STAGE_WIDTH } from '../presentation/dom'
+import { createLightbox } from '../presentation/lightbox'
+import { slideMarkup } from '../presentation/overview'
+import { attachStage, presenterHref } from '../presentation/sync'
+import { clampIndex } from '../presenter/protocol'
 import {
   blankCard,
   blankSlide,
@@ -12,10 +17,11 @@ import {
   parseDeckList,
   parseLibrary,
 } from './deck'
-import { renderStudioSlide } from './render'
+import { renderStudioSlide, slideImages, slidePhotos } from './render'
 import './studio.scss'
 
 const SAVE_MS = 400
+let publish = () => {}
 
 const root = document.querySelector('#studio')
 if (!root) throw new Error('missing studio')
@@ -33,7 +39,9 @@ status.setAttribute('aria-live', 'polite')
 status.textContent = 'Загрузка…'
 const presentButton = el('button', { className: 'studio-present' }, 'Показать')
 presentButton.type = 'button'
-head.append(tabs, titleInput, status, presentButton)
+const remoteButton = el('button', { className: 'studio-remote' }, 'Ведущий')
+remoteButton.type = 'button'
+head.append(tabs, titleInput, status, remoteButton, presentButton)
 
 const work = el('div', { className: 'studio-work' })
 const rail = el('nav', { className: 'studio-rail' })
@@ -67,8 +75,10 @@ const slot = el('div', { className: 'stage-slot' })
 const stage = el('div', { className: 'stage' })
 slot.append(stage)
 viewport.append(slot)
-overlay.append(field, viewport)
+const photo = createLightbox(overlay, () => {})
+overlay.append(field, viewport, photo.root)
 shadow.append(style, fonts, overlay)
+photo.watch(() => publish())
 
 const inspector = el('aside', { className: 'studio-inspector' })
 inspector.setAttribute('aria-label', 'Слайд')
@@ -101,6 +111,8 @@ let timer = 0
 let chain = Promise.resolve()
 let menuIndex: number | null = null
 let menuAnchor: HTMLElement | null = null
+let listedRaw = ''
+let listedSlides: RemoteSlide[] = []
 
 function toolButton(label: string) {
   const button = el('button', { className: 'studio-tool' }, label)
@@ -118,6 +130,110 @@ function placeHost(presenting: boolean) {
   host.style.position = presenting ? 'fixed' : 'relative'
   host.style.zIndex = presenting ? '30' : '0'
   host.style.inset = presenting ? '0' : 'auto'
+}
+
+function placeRemote(presenting: boolean) {
+  remoteButton.classList.toggle('studio-remote-float', presenting)
+  if (presenting) app.append(remoteButton)
+  else head.insertBefore(remoteButton, presentButton)
+}
+
+function deckKey() {
+  return state.deck ? `studio:${state.deck.id}` : 'studio:'
+}
+
+function listedDeck(deck: Deck) {
+  const raw = JSON.stringify(deck.slides)
+  if (raw === listedRaw) return listedSlides
+  listedRaw = raw
+  listedSlides = deck.slides.map((slide) => {
+    const root = renderStudioSlide(slide)
+    return {
+      title: root.querySelector('h1')?.textContent?.trim() ?? '',
+      step: '',
+      images: slidePhotos(root),
+      markup: slideMarkup(root),
+    }
+  })
+  return listedSlides
+}
+
+function readState() {
+  const deck = state.deck
+  return {
+    key: deckKey(),
+    open: state.presenting && Boolean(deck),
+    index: state.index,
+    slides: deck ? listedDeck(deck) : [],
+    lightbox: photo.isOpen()
+      ? { index: photo.index(), view: photo.getView() }
+      : null,
+  }
+}
+
+function openAt(images: HTMLImageElement[], index: number) {
+  if (!images.length) return
+  photo.open(
+    images.map(image => ({ src: image.currentSrc || image.src, alt: image.alt })),
+    clampIndex(index, images.length),
+  )
+}
+
+function scrollCopy(index: number, top: number) {
+  if (!state.presenting || index !== state.index) return
+  const body = stage.querySelector('.copy-body')
+  if (!(body instanceof HTMLElement)) return
+  const room = body.scrollHeight - body.clientHeight
+  body.scrollTop = top * Math.max(0, room)
+}
+
+function showAt(index: number) {
+  if (!state.deck) return
+  if (photo.isOpen()) photo.close()
+  const next = clampIndex(index, state.deck.slides.length)
+  const moved = next !== state.index
+  state.index = next
+  state.pendingCard = null
+  if (!state.presenting) setPresenting(true)
+  if (!moved) return
+  paintStage()
+  paintRail()
+  paintInspector(true)
+}
+
+function applyCommand(command: RemoteCommand) {
+  if (command.type === 'text-save' || command.type === 'text-reset' || command.type === 'text-hide') return
+  if (!state.deck) return
+  if (command.type === 'show') {
+    showAt(command.index)
+    return
+  }
+  if (command.type === 'copy-scroll') {
+    scrollCopy(command.index, command.top)
+    return
+  }
+  if (command.type === 'lightbox-close') {
+    photo.close()
+    return
+  }
+  if (command.type === 'lightbox-view') {
+    if (photo.isOpen()) photo.setView(command.view)
+    return
+  }
+  if (command.type === 'lightbox-photo') {
+    if (photo.isOpen()) photo.select(command.index)
+    return
+  }
+  const images = slideImages(stage)
+  if (!images.length) return
+  if (!state.presenting) setPresenting(true)
+  openAt(images, command.index)
+}
+
+function openRemote() {
+  setPresenting(true)
+  const opened = window.open(presenterHref(), 'origami-presenter')
+  opened?.focus()
 }
 
 function updateFit() {
@@ -203,6 +319,7 @@ function paintActions() {
   const total = state.deck?.slides.length ?? 0
   addButton.disabled = !state.deck
   presentButton.disabled = total === 0
+  remoteButton.disabled = total === 0
   counter.textContent = total ? `${state.index + 1} / ${total}` : ''
 }
 
@@ -327,6 +444,7 @@ function paintStage() {
   stage.append(renderStudioSlide(slide))
   stage.setAttribute('aria-label', `Слайд ${state.index + 1} из ${state.deck.slides.length}`)
   requestAnimationFrame(updateFit)
+  publish()
 }
 
 function syncTitle() {
@@ -746,9 +864,13 @@ function moveSlide(index: number, delta: number) {
 function setPresenting(on: boolean) {
   if (on) closeSlideMenu()
   state.presenting = on
+  if (!on && photo.isOpen()) photo.close()
   app.classList.toggle('is-presenting', on)
+  overlay.classList.toggle('is-showing', on)
   placeHost(on)
+  placeRemote(on)
   requestAnimationFrame(updateFit)
+  publish()
 }
 
 async function openDeck(id: string) {
@@ -774,6 +896,17 @@ async function openDeck(id: string) {
 
 addButton.addEventListener('click', addSlide)
 presentButton.addEventListener('click', () => setPresenting(true))
+remoteButton.addEventListener('click', openRemote)
+stage.addEventListener('click', (event) => {
+  if (!state.presenting || !(event.target instanceof Element)) return
+  const frame = event.target.closest('.photo-frame, .card-photo')
+  const img = frame?.querySelector('img')
+  if (!(img instanceof HTMLImageElement)) return
+  const images = slideImages(stage)
+  const index = images.indexOf(img)
+  if (index < 0) return
+  openAt(images, index)
+})
 titleInput.addEventListener('input', () => {
   if (!state.deck) return
   state.deck.title = titleInput.value
@@ -789,6 +922,12 @@ window.addEventListener('keydown', (event) => {
     closeSlideMenu()
     return
   }
+  if (state.presenting && photo.isOpen() && event.key === 'Escape') {
+    event.preventDefault()
+    photo.close()
+    return
+  }
+  if (state.presenting && photo.onKey(event)) return
   if (event.key === 'Escape' && state.presenting) {
     event.preventDefault()
     setPresenting(false)
@@ -850,6 +989,18 @@ async function boot() {
   }
   state.deck = null
   await openDeck(id)
+}
+
+if (import.meta.env.DEV) {
+  const sync = attachStage({
+    get key() {
+      return deckKey()
+    },
+    read: readState,
+    apply: applyCommand,
+  })
+  publish = sync.publish
+  publish()
 }
 
 void boot().catch(() => {

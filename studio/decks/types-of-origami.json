@@ -12,8 +12,8 @@
       "imageSide": "right",
       "images": [
         {
-          "src": "https://origamiok.com/wp-content/uploads/2025/06/Types-of-Origami-From-Easy-to-Complex.webp",
-          "alt": "Модели оригами от простых к сложным"
+          "src": "https://localhost:5173/origami-types.png",
+          "alt": ""
         }
       ],
       "cards": [],

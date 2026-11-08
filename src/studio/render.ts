@@ -1,6 +1,7 @@
 import type { StudioImage, StudioSlide } from './deck'
 import { el } from '@zero-dependency/dom'
 import { renderSVG } from 'uqr'
+import { photoFrame } from '../presentation/dom'
 import { httpUrl, youtubeIdOf } from './deck'
 
 const GRID_LIMIT = 6
@@ -17,15 +18,22 @@ function lines(body: string[]) {
 }
 
 function frame(image: StudioImage, label: string) {
-  const slot = el('div', { className: 'photo-slot' })
-  const box = el('div', { className: 'photo-frame' })
-  const img = el('img', { className: 'sheet-photo' })
-  img.src = image.src
-  img.alt = image.alt || label
-  img.decoding = 'async'
-  box.append(img)
-  slot.append(box)
-  return slot
+  return photoFrame({ url: image.src, alt: image.alt }, label)
+}
+
+export function slideImages(root: ParentNode) {
+  return [...root.querySelectorAll('img')].filter((img): img is HTMLImageElement => {
+    return img instanceof HTMLImageElement
+      && (img.classList.contains('sheet-photo') || Boolean(img.closest('.card-photo')))
+      && Boolean(img.currentSrc || img.src)
+  })
+}
+
+export function slidePhotos(root: ParentNode) {
+  return slideImages(root).map(img => ({
+    src: img.currentSrc || img.src,
+    alt: img.alt,
+  }))
 }
 
 function qrLink(href: string, label: string, kind: string) {

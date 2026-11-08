@@ -81,6 +81,7 @@ select:focus-visible {
 
 .studio-tab,
 .studio-present,
+.studio-remote,
 .studio-tool,
 .studio-mini {
   border: 0;
@@ -123,17 +124,45 @@ select:focus-visible {
   text-align: right;
 }
 
-.studio-present {
+.studio-present,
+.studio-remote {
   flex: none;
-  background: var(--seal);
   padding: 0 14px;
   height: 32px;
-  color: #fffaf3;
   font-weight: 600;
   font-family: var(--display);
   letter-spacing: -0.03em;
+}
+
+.studio-present {
+  background: var(--seal);
+  color: #fffaf3;
 
   &:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--seal) 82%, black);
+  }
+}
+
+.studio-remote {
+  border: 1px solid var(--line);
+  color: var(--paper);
+
+  &:hover:not(:disabled) {
+    border-color: var(--paper);
+  }
+}
+
+.studio-remote-float {
+  position: fixed;
+  top: 16px;
+  left: 16px;
+  z-index: 40;
+  border-color: transparent;
+  background: var(--seal);
+  color: #fffaf3;
+
+  &:hover:not(:disabled) {
+    border-color: transparent;
     background: color-mix(in srgb, var(--seal) 82%, black);
   }
 }

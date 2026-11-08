@@ -1,6 +1,6 @@
 import type { Layout, StudioSlide } from './deck'
 import { describe, expect, it } from 'vitest'
-import { renderStudioSlide } from './render'
+import { renderStudioSlide, slidePhotos } from './render'
 
 function sample(layout: Layout, patch: Partial<StudioSlide> = {}): StudioSlide {
   return {
@@ -41,6 +41,7 @@ describe('studio slides', () => {
     expect(root.querySelectorAll('p')).toHaveLength(1)
     expect(root.querySelectorAll('img')).toHaveLength(1)
     expect(root.querySelector('img')?.getAttribute('src')).toBe('/a.webp')
+    expect(root.querySelector('.photo-zoom')?.getAttribute('aria-label')).toBe('На весь экран')
   })
 
   it('renders a chapter as a single line', () => {
@@ -84,6 +85,7 @@ describe('studio slides', () => {
     expect(root.querySelectorAll('.paper-card')).toHaveLength(4)
     expect(root.querySelector('.paper-card strong')?.textContent).toBe('Одна')
     expect(root.querySelector('.paper-card img')?.getAttribute('src')).toBe('/card.webp')
+    expect(root.querySelector('.card-photo .photo-frame')).toBeNull()
     expect(root.textContent).not.toContain('Лишняя')
   })
 
@@ -108,5 +110,19 @@ describe('studio slides', () => {
     expect(source?.textContent).toContain('Источник')
     expect(video?.getAttribute('href')).toBe('https://www.youtube.com/watch?v=xHDm-Mfa3Sk')
     expect(video?.textContent).toContain('Видео')
+  })
+})
+
+function photoPaths(slide: StudioSlide) {
+  return slidePhotos(renderStudioSlide(slide)).map(photo => new URL(photo.src, 'http://studio.local').pathname)
+}
+
+describe('studio slide photos', () => {
+  it('collects a grid in order, a card photo, and nothing from a chapter', () => {
+    const grid = renderStudioSlide(sample('grid'))
+    expect(slidePhotos(grid).map(photo => photo.alt)).toEqual(['а', 'б', 'в', 'г', 'д', 'е'])
+    expect(photoPaths(sample('grid'))).toEqual(['/a.webp', '/b.webp', '/c.webp', '/d.webp', '/e.webp', '/f.webp'])
+    expect(photoPaths(sample('cards'))).toEqual(['/card.webp'])
+    expect(slidePhotos(renderStudioSlide(sample('chapter')))).toEqual([])
   })
 })

@@ -56,7 +56,7 @@
       "layout": "quote",
       "title": "Журавль — долголетие и удача.",
       "body": [
-        "В японском мифе журавль живёт тысячу лет."
+        "Среди всех традиционных моделей журавль оригами является наиболее важной и имеет глубокий культурный след. Он символизирует долголетие и удачу, поскольку в японской мифологии считается, что журавли живут 1000 лет."
       ],
       "imageSide": "right",
       "images": [
@@ -74,7 +74,7 @@
       "layout": "quote",
       "title": "Тысяча журавлей — это желание.",
       "body": [
-        "Их складывают и дарят, чтобы большое желание сбылось."
+        "Согласно традиционному поверью, складывание и отправка 1000 журавликов может исполнить заветные желания. Поэтому люди любят дарить 1000 журавликов в качестве подарка."
       ],
       "imageSide": "right",
       "images": [
@@ -97,7 +97,7 @@
       "cards": [
         {
           "title": "Традиционное",
-          "body": "Один квадрат. Модель передают из рук в руки: журавль, лодка, шляпа.",
+          "body": "Классический вариант с использованием одного квадратного листа бумаги.",
           "image": {
             "src": "https://origamiok.com/wp-content/uploads/2024/06/Origami-Crane-2x3-Featured.webp",
             "alt": "Традиционное"
@@ -105,7 +105,7 @@
         },
         {
           "title": "Модульное",
-          "body": "Много одинаковых деталей. Их вставляют друг в друга, без клея.",
+          "body": "Много одинаковых деталей. Их вставляют друг в друга или склеивают.",
           "image": {
             "src": "/studio/sources/best-origami-paper/images/25-Origami-Kusudama-Flower-by-Momigami-Paper.webp",
             "alt": "Кусудама из многих деталей"
@@ -113,7 +113,7 @@
         },
         {
           "title": "Мокрое",
-          "body": "Лист слегка смачивают. Сгиб становится мягким, фигура — объёмной.",
+          "body": "Лист слегка смачивают. Сгиб становится мягким, фигура — объемной.",
           "image": {
             "src": "https://origamiok.com/wp-content/uploads/2025/06/Origami-Elephant-Akira-Yoshizawa-.jpg",
             "alt": "Мокрое"
@@ -121,7 +121,7 @@
         },
         {
           "title": "Тесселяция",
-          "body": "Один узор повторяется по всему листу. Получается рельеф, а не зверёк.",
+          "body": "Один узор повторяется по всему листу. Получается рельеф — звезда, снежинка.",
           "image": {
             "src": "/studio/sources/best-origami-paper/images/52-Origami-Snowflake-01.webp",
             "alt": "Снежинка из повторяющегося узора"
@@ -134,11 +134,19 @@
     {
       "id": "papers",
       "layout": "cards",
-      "title": "Чем складывают",
+      "title": "Виды бумаги",
       "body": [],
       "imageSide": "right",
       "images": [],
       "cards": [
+        {
+          "title": "Двусторонняя",
+          "body": "Подходит для всех сборок.",
+          "image": {
+            "src": "https://localhost:5173/studio/sources/best-origami-paper/images/23-Tant-Paper.webp",
+            "alt": "Двусторонняя"
+          }
+        },
         {
           "title": "Ками",
           "body": "Одна сторона цветная, другая белая. Бумага кружка.",
@@ -162,14 +170,6 @@
             "src": "/studio/sources/best-origami-paper/images/34-Origami-Lucky-Star-Washi-Paper.webp",
             "alt": "Звезда из узорной бумаги"
           }
-        },
-        {
-          "title": "Односторонняя",
-          "body": "Белая изнанка. Её и показывают в схемах.",
-          "image": {
-            "src": "/studio/sources/best-origami-paper/images/18-Origami-Rabbit-With-Kami-Paper-1.webp",
-            "alt": "Кролик из односторонней ками"
-          }
         }
       ],
       "href": "",
@@ -185,7 +185,7 @@
       "cards": [
         {
           "title": "Фольга",
-          "body": "Держит мелкий сгиб. На первом занятии скользит.",
+          "body": "Держит мелкий сгиб.",
           "image": {
             "src": "/studio/sources/best-origami-paper/images/38-Foil-Paper.webp",
             "alt": "Фольгированная бумага"
@@ -193,34 +193,23 @@
         },
         {
           "title": "Стикер",
-          "body": "Готовый квадрат. Хватает на бабочку.",
+          "body": "Миниатюрная модель, бумага всегда под рукой.",
           "image": {
-            "src": "/studio/sources/learn-to-origami/images/45-Easy-Sticky-Note-Origami-Butterfly.webp",
-            "alt": "Бабочка из стикера"
+            "src": "https://origamiok.com/wp-content/uploads/2025/09/Sticky-Notes.webp",
+            "alt": "Стикер"
           }
         },
         {
           "title": "Купюра",
-          "body": "Прямоугольник. Для неё свои схемы, не первые модели кружка.",
+          "body": "Прямоугольник. Для нее есть свои схемы.",
           "image": {
-            "src": "/studio/sources/best-origami-paper/images/14-Dollar-Bill.webp",
+            "src": "https://localhost:5173/5rub.jpg",
             "alt": "Купюра"
           }
         }
       ],
       "href": "",
       "youtubeId": ""
-    },
-    {
-      "id": "end",
-      "layout": "end",
-      "title": "Учимся оригами",
-      "body": [],
-      "imageSide": "right",
-      "images": [],
-      "cards": [],
-      "href": "https://origamiok.com/learn-to-origami/",
-      "youtubeId": "xHDm-Mfa3Sk"
     }
   ]
 }

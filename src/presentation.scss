@@ -211,15 +211,19 @@ a {
 
   h1 {
     margin: 0 0 14px;
+    min-width: 0;
     color: var(--ink);
     font-size: 48px;
     line-height: 1.05;
+    overflow-wrap: break-word;
   }
 
   p {
     margin: 0 0 12px;
+    min-width: 0;
     font-size: 24px;
     line-height: 1.35;
+    overflow-wrap: break-word;
   }
 
   ul {
@@ -232,6 +236,8 @@ a {
     position: relative;
     margin: 0 0 10px;
     padding-left: 22px;
+    min-width: 0;
+    overflow-wrap: break-word;
   }
 
   li::before {
@@ -1038,6 +1044,10 @@ a {
   place-items: center;
   height: 260px;
   min-height: 0;
+}
+
+.overlay.is-showing .card-photo img {
+  cursor: zoom-in;
 }
 
 .paper-cards[data-count='3'] .card-photo {
